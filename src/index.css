@@ -1,0 +1,135 @@
+@import 'tailwindcss';
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/500.css';
+
+@theme {
+  --font-sans: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Neutral base, off-black, never pure #000 */
+  --color-canvas: #09090b;
+  --color-surface: #101013;
+  --color-border: #26262c;
+  --color-border-soft: #1c1c21;
+
+  --color-ink: #f4f4f5;
+  --color-ink-muted: #a1a1aa;
+  --color-ink-faint: #85858d;
+
+  /* Single locked accent: emerald (growth) */
+  --color-accent: #34d399;
+  --color-accent-strong: #10b981;
+  --color-accent-soft: #6ee7b7;
+  --color-accent-dim: #0f2e24;
+
+  --radius-panel: 1rem;
+  --radius-field: 0.65rem;
+
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Slow, deliberate spin for the brand mark ring, not Tailwind's 1s default. */
+  --animate-spin-slow: spin 6s linear infinite;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-soft);
+  }
+
+  html {
+    background: var(--color-canvas);
+    color-scheme: dark;
+  }
+
+  /*
+   * The navbar is fixed at 72px tall, so anchor targets need matching
+   * scroll-margin-top or the fixed nav covers the top of the section
+   * (e.g. the Contact heading) after a hash/anchor scroll.
+   */
+  section[id] {
+    scroll-margin-top: 96px;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * Chrome/Edge/Firefox render <option> using these author styles inside
+   * the native dropdown popup; Safari mostly ignores them but honors
+   * color-scheme instead, which the select itself also sets.
+   */
+  select {
+    color-scheme: dark;
+  }
+
+  option {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  ::selection {
+    background: var(--color-accent-dim);
+    color: var(--color-accent-soft);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .container-app {
+    width: 100%;
+    max-width: 88rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .container-app {
+      padding-inline: 2rem;
+    }
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
