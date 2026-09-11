@@ -15,9 +15,9 @@ export const faqItems: FaqItem[] = [
       'At launch you receive the full source code, documentation for anything custom, and a walkthrough call covering how the site is structured. If you are rebuilding an existing site, you can share your current codebase or a repository link through the contact form so we start with full context.',
   },
   {
-    question: 'How does payment work?',
+    question: 'How do milestone payments work and how can I pay?',
     answer:
-      'Projects run on a milestone-based schedule: a deposit to begin, then payments tied to agreed milestones (design approval, development complete, launch). Every milestone and its cost is agreed upfront, no surprise invoices.',
+      'Projects run on a milestone-based schedule (deposit to begin, then payments tied to milestones). We accept secure international and local payments via Payoneer, Wise, and direct bank wire transfer. No surprise invoices, everything is agreed upfront.',
   },
   {
     question: 'Do I need to create an account or log in?',

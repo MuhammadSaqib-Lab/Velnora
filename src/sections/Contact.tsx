@@ -1,5 +1,5 @@
-import { CheckCircle2, ChevronDown, Clock, Mail, MessageSquareText } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { CheckCircle2, ChevronDown, Clock, Mail, MessageSquareText, ShieldCheck } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { FileHandover } from '@/components/contact/FileHandover'
 import { TrustGuarantees } from '@/components/contact/TrustGuarantees'
 import { Button } from '@/components/ui/Button'
@@ -14,6 +14,7 @@ import {
   type ContactFormData,
   type ContactFormErrors,
 } from '@/lib/contact'
+import { ESTIMATE_REQUEST_EVENT, type PendingEstimate } from '@/lib/estimateHandoff'
 
 const initialForm: ContactFormData = {
   name: '',
@@ -31,6 +32,21 @@ export function Contact() {
   const [attachments, setAttachments] = useState<File[]>([])
   const [errors, setErrors] = useState<ContactFormErrors>({})
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle')
+
+  useEffect(() => {
+    function handleEstimateRequest(event: Event) {
+      const { detail } = event as CustomEvent<PendingEstimate>
+      setForm((prev) => ({
+        ...prev,
+        projectType: detail.projectType,
+        budget: detail.budget,
+        message: detail.message,
+      }))
+    }
+
+    window.addEventListener(ESTIMATE_REQUEST_EVENT, handleEstimateRequest)
+    return () => window.removeEventListener(ESTIMATE_REQUEST_EVENT, handleEstimateRequest)
+  }, [])
 
   function updateField<K extends keyof ContactFormData>(key: K, value: ContactFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -248,10 +264,10 @@ export function Contact() {
                       Email us directly
                     </p>
                     <a
-                      href="mailto:hello@velnora.com"
+                      href="mailto:muhammadsaqib9117994@gmail.com"
                       className="text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent-soft)]"
                     >
-                      hello@velnora.com
+                      muhammadsaqib9117994@gmail.com
                     </a>
                   </div>
                 </div>
@@ -294,6 +310,16 @@ export function Contact() {
             </Reveal>
           </div>
         </div>
+
+        <Reveal delay={0.2} className="mt-10 flex items-center justify-center gap-2 text-center">
+          <ShieldCheck
+            className="h-4 w-4 shrink-0 text-[var(--color-accent)]"
+            strokeWidth={1.75}
+          />
+          <p className="text-sm text-[var(--color-ink-muted)]">
+            Secure payments via Payoneer, Wise & Bank Transfer.
+          </p>
+        </Reveal>
       </div>
     </section>
   )

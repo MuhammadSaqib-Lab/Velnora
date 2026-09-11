@@ -1,17 +1,13 @@
 import { motion, useReducedMotion } from 'motion/react'
-import { Gauge, Search, TrendingUp } from 'lucide-react'
-import { GlassPanel } from '@/components/ui/GlassPanel'
+import { services } from '@/data/services'
 
-const cards = [
-  { icon: TrendingUp, label: 'Organic traffic', value: '+', className: 'left-[6%] top-[12%]' },
-  { icon: Gauge, label: 'Load time', value: 'fast', className: 'right-[4%] top-[38%]' },
-  { icon: Search, label: 'Search visibility', value: 'up', className: 'left-[14%] bottom-[10%]' },
-]
+const RADIUS_PERCENT = 40
 
 /**
  * Static/CSS visual for devices without WebGL, low-power hardware, or
- * prefers-reduced-motion. Communicates the same "AI network / growth"
- * idea without a 3D render pipeline.
+ * prefers-reduced-motion. Mirrors the real 3D scene's orbiting service
+ * badges, but placed at fixed positions rather than continuously
+ * animated, since this path is specifically for lower-power devices.
  */
 export function SceneFallback() {
   const reduce = useReducedMotion()
@@ -25,23 +21,28 @@ export function SceneFallback() {
         <div className="h-40 w-40 rounded-full border border-[var(--color-accent)]/30 md:h-48 md:w-48" />
       </div>
 
-      {cards.map(({ icon: Icon, label, value, className }, i) => (
-        <motion.div
-          key={label}
-          className={`absolute hidden sm:block ${className}`}
-          initial={reduce ? false : { opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15 * i, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <GlassPanel className="flex items-center gap-3 px-4 py-3">
-            <Icon className="h-4 w-4 text-[var(--color-accent)]" strokeWidth={1.75} />
-            <div>
-              <p className="text-[11px] text-[var(--color-ink-faint)]">{label}</p>
-              <p className="font-mono text-sm text-[var(--color-ink)]">{value}</p>
+      {services.map((service, i) => {
+        const angle = (i / services.length) * Math.PI * 2 - Math.PI / 2
+        const left = 50 + RADIUS_PERCENT * Math.cos(angle)
+        const top = 50 + RADIUS_PERCENT * Math.sin(angle)
+        const Icon = service.icon
+
+        return (
+          <motion.div
+            key={service.title}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+            style={{ left: `${left}%`, top: `${top}%` }}
+            initial={reduce ? false : { opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.08 * i, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-canvas)]/85 px-2.5 py-1 text-[9px] font-medium text-[var(--color-accent-soft)] shadow-[0_0_18px_-6px_rgba(16,185,129,0.6)] backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-[11px]">
+              <Icon className="h-3 w-3 shrink-0" strokeWidth={2} />
+              {service.title}
             </div>
-          </GlassPanel>
-        </motion.div>
-      ))}
+          </motion.div>
+        )
+      })}
     </div>
   )
 }

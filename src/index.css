@@ -32,6 +32,16 @@
 
   /* Slow, deliberate spin for the brand mark ring, not Tailwind's 1s default. */
   --animate-spin-slow: spin 6s linear infinite;
+  --animate-marquee: marquee 28s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @layer base {

@@ -56,10 +56,10 @@ export function Footer() {
             ))}
           </ul>
           <a
-            href="mailto:hello@velnora.com"
+            href="mailto:muhammadsaqib9117994@gmail.com"
             className="mt-6 inline-block text-sm text-[var(--color-accent)] hover:text-[var(--color-accent-soft)]"
           >
-            hello@velnora.com
+            muhammadsaqib9117994@gmail.com
           </a>
         </div>
       </div>

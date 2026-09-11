@@ -51,7 +51,6 @@ src/
 A few placeholders need real values before this ships:
 
 - `velnora.com` domain references in `index.html`, `src/lib/seoConfig.ts`, `public/robots.txt`, and `public/sitemap.xml`
-- `hello@velnora.com` contact email in the Footer and Contact sections
 - `public/og-image.png` referenced by Open Graph/Twitter tags does not exist yet, add a real 1200x630 image
 - The Contact form is frontend-only (see `src/lib/contact.ts`) and needs a real backend endpoint
 
