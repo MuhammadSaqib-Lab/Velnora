@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { Button } from '@/components/ui/Button'
 import { fieldInputClass } from '@/components/ui/fieldStyles'
+import { MAX_LENGTHS } from '@/lib/validation'
 
 const GREETING = "Hi there! Looking to build or rebuild your site?"
 
@@ -139,6 +140,7 @@ export function FloatingChatWidget() {
                       <input
                         id="chat-quick-message"
                         type="text"
+                        maxLength={MAX_LENGTHS.quickMessage}
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         placeholder="What are you looking to build?"

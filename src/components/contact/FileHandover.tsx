@@ -4,6 +4,7 @@ import { Field } from '@/components/ui/Field'
 import { fieldInputClass } from '@/components/ui/fieldStyles'
 import { ACCEPTED_HANDOVER_EXTENSIONS, MAX_HANDOVER_FILE_SIZE_BYTES } from '@/lib/contact'
 import { cn } from '@/lib/utils'
+import { MAX_LENGTHS } from '@/lib/validation'
 
 interface FileHandoverProps {
   files: File[]
@@ -184,6 +185,7 @@ export function FileHandover({
               id="repoLink"
               name="repoLink"
               type="url"
+              maxLength={MAX_LENGTHS.url}
               value={repoLink}
               onChange={(e) => onRepoLinkChange(e.target.value)}
               className={cn(fieldInputClass, 'pl-10')}

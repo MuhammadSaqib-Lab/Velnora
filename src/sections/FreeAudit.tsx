@@ -7,6 +7,7 @@ import { GlassPanel } from '@/components/ui/GlassPanel'
 import { Reveal } from '@/components/ui/Reveal'
 import { auditBenefits } from '@/data/audit'
 import { submitAuditRequest, validateAuditForm, type AuditFormData, type AuditFormErrors } from '@/lib/audit'
+import { MAX_LENGTHS } from '@/lib/validation'
 
 const initialForm: AuditFormData = { url: '', email: '' }
 
@@ -93,6 +94,7 @@ export function FreeAudit() {
                     name="url"
                     type="url"
                     autoComplete="url"
+                    maxLength={MAX_LENGTHS.url}
                     value={form.url}
                     onChange={(e) => updateField('url', e.target.value)}
                     className={fieldInputClass}
@@ -106,6 +108,7 @@ export function FreeAudit() {
                     name="email"
                     type="email"
                     autoComplete="email"
+                    maxLength={MAX_LENGTHS.email}
                     value={form.email}
                     onChange={(e) => updateField('email', e.target.value)}
                     className={fieldInputClass}

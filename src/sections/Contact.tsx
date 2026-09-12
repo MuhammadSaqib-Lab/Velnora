@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, Clock, Mail, MessageSquareText, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Mail, MessageSquareText, ShieldCheck, Zap } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { FileHandover } from '@/components/contact/FileHandover'
 import { TrustGuarantees } from '@/components/contact/TrustGuarantees'
@@ -15,6 +15,7 @@ import {
   type ContactFormErrors,
 } from '@/lib/contact'
 import { ESTIMATE_REQUEST_EVENT, type PendingEstimate } from '@/lib/estimateHandoff'
+import { MAX_LENGTHS } from '@/lib/validation'
 
 const initialForm: ContactFormData = {
   name: '',
@@ -119,6 +120,7 @@ export function Contact() {
                   name="name"
                   type="text"
                   autoComplete="name"
+                  maxLength={MAX_LENGTHS.name}
                   value={form.name}
                   onChange={(e) => updateField('name', e.target.value)}
                   className={fieldInputClass}
@@ -132,6 +134,7 @@ export function Contact() {
                   name="email"
                   type="email"
                   autoComplete="email"
+                  maxLength={MAX_LENGTHS.email}
                   value={form.email}
                   onChange={(e) => updateField('email', e.target.value)}
                   className={fieldInputClass}
@@ -145,6 +148,7 @@ export function Contact() {
                   name="company"
                   type="text"
                   autoComplete="organization"
+                  maxLength={MAX_LENGTHS.company}
                   value={form.company}
                   onChange={(e) => updateField('company', e.target.value)}
                   className={fieldInputClass}
@@ -158,6 +162,7 @@ export function Contact() {
                   name="phone"
                   type="tel"
                   autoComplete="tel"
+                  maxLength={MAX_LENGTHS.phone}
                   value={form.phone}
                   onChange={(e) => updateField('phone', e.target.value)}
                   className={fieldInputClass}
@@ -230,6 +235,7 @@ export function Contact() {
                     id="message"
                     name="message"
                     rows={5}
+                    maxLength={MAX_LENGTHS.message}
                     value={form.message}
                     onChange={(e) => updateField('message', e.target.value)}
                     className={fieldInputClass}
@@ -273,14 +279,14 @@ export function Contact() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Clock
+                  <Zap
                     className="mt-0.5 h-5 w-5 shrink-0 text-[var(--color-accent)]"
                     strokeWidth={1.75}
                   />
                   <div>
                     <p className="text-sm font-medium text-[var(--color-ink)]">Response time</p>
                     <p className="text-sm text-[var(--color-ink-muted)]">
-                      Within one business day, Monday to Friday.
+                      Average response time under 2 hours, one business day at the latest.
                     </p>
                   </div>
                 </div>

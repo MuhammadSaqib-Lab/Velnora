@@ -3,6 +3,7 @@ import { Contact } from '@/sections/Contact'
 import { CostEstimator } from '@/sections/CostEstimator'
 import { CTASection } from '@/sections/CTASection'
 import { FAQ } from '@/sections/FAQ'
+import { FinalCTA } from '@/sections/FinalCTA'
 import { FreeAudit } from '@/sections/FreeAudit'
 import { Hero } from '@/sections/Hero'
 import { LogoStrip } from '@/sections/LogoStrip'
@@ -35,6 +36,7 @@ export function Home() {
       <FAQ />
       <CostEstimator />
       <Contact />
+      <FinalCTA />
     </>
   )
 }
