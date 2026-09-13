@@ -32,9 +32,10 @@ export function validateAuditForm(data: AuditFormData): AuditFormErrors {
 }
 
 /**
- * Frontend-only for this phase, same pattern as submitContactForm in
- * lib/contact.ts: swap the body for a real request once a backend exists,
- * the FreeAudit section only depends on this function's signature.
+ * Frontend-only for this phase. Phase 2's backend covers the main
+ * Contact/project-inquiry forms (see src/lib/api.ts); this one doesn't
+ * have a backend endpoint yet. Swap the body for a real request once it
+ * does, the FreeAudit section only depends on this function's signature.
  */
 export async function submitAuditRequest(_data: AuditFormData): Promise<{ ok: true }> {
   await new Promise((resolve) => setTimeout(resolve, 900))

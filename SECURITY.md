@@ -1,8 +1,8 @@
 # Security
 
-Velnora is currently a **frontend-only** static site (Phase 1, see [CLAUDE.md](CLAUDE.md)). There is no backend, database, or authentication yet, so this document covers what a frontend audit can actually control, and is explicit about what it cannot.
+Velnora is now **Phase 2: frontend + backend/database/API** (see [CLAUDE.md](CLAUDE.md)). This document covers the original frontend-only audit (still accurate, nothing it covered has regressed) plus a new section on the backend added in Phase 2. There is still no authentication, admin dashboard, or payments, see "Future backend security requirements" below for what's still missing before this handles real user data at scale.
 
-**Frontend security cannot replace backend security.** Everything below reduces the frontend's own attack surface (XSS, unsafe links, dependency risk, information leakage) and prepares the ground for a backend. It does not, and cannot, provide authentication, authorization, data validation guarantees, or protection against a malicious client bypassing the browser entirely (anyone can send raw HTTP requests with DevTools or `curl`).
+**Frontend security cannot replace backend security.** The frontend section below reduces the frontend's own attack surface (XSS, unsafe links, dependency risk, information leakage). The backend section covers what now actually enforces validation, rate limiting, and safe error handling server-side, the frontend's own checks remain UX-only and are not a security boundary by themselves; a malicious client can always send raw HTTP requests directly to the API with `curl` or DevTools, bypassing the browser entirely.
 
 ## Audit summary
 
@@ -37,9 +37,9 @@ Everything else the audit checked (see the full command list at the bottom) came
 
 ## Forms
 
-Three forms exist: Contact, Free Audit, and the floating chat's quick-message box. All are **frontend-only stubs** (`src/lib/contact.ts`, `src/lib/audit.ts`), they simulate a network delay and resolve successfully; nothing is sent anywhere yet.
+Three forms exist: Contact, Free Audit, and the floating chat's quick-message box. As of Phase 2, **Contact** (`src/sections/Contact.tsx`) submits for real, via `apiPost` (`src/lib/api.ts`) to the backend's `POST /api/project-inquiry`, and is independently re-validated server-side (see "Backend / API security" below). **Free Audit and the floating chat's quick-message box remain frontend-only stubs** (`src/lib/audit.ts`), they simulate a network delay and resolve successfully; nothing is sent anywhere yet, this is intentional Phase 2 scope, not an oversight.
 
-Client-side validation now covers, per field: required-ness, format (email regex, URL parsing), and a maximum length (`src/lib/validation.ts`). This is UX validation, not security. **It provides no guarantee once a backend exists** because any client-side check can be bypassed by calling the API directly. See "Future backend security requirements" below for what must be added server-side.
+Client-side validation covers, per field: required-ness, format (email regex, URL parsing), and a maximum length (`src/lib/validation.ts`). This remains UX validation, not a security boundary by itself, **any client-side check can still be bypassed by calling the API directly**, which is exactly why Contact's submissions are now also validated server-side. See "Backend / API security" for what's enforced there today, and "Future backend security requirements" below for what's still missing (auth, CSRF, etc.).
 
 - No form data is logged to the console (verified, no `console.*` calls anywhere).
 - No form data is written to `localStorage`/`sessionStorage`/cookies.
@@ -75,11 +75,11 @@ A CSP is only meaningful as a **real HTTP response header** (a `<meta http-equiv
 
 ```
 default-src 'self';
-script-src 'self' 'sha256-3iXiqbWSxyBr1MjURaBcdD3DTnlaFZa+ZtJPkyKzVMA=';
+script-src 'self' 'sha256-AMF9NWirfteRBbBSJP8/7HbFqu7GbL51JVCdkQkyBN0=';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: https://cdn.simpleicons.org https://picsum.photos;
 font-src 'self';
-connect-src 'self';
+connect-src 'self' https://api.velnora.com;
 worker-src 'self' blob:;
 object-src 'none';
 base-uri 'self';
@@ -90,12 +90,13 @@ upgrade-insecure-requests
 
 Notes on the choices that aren't obvious:
 
-- **`script-src` uses a hash, not `'unsafe-inline'`.** The one inline script is the static JSON-LD block in `index.html`. If you edit that JSON, regenerate the hash and update `vercel.json`:
+- **`script-src` uses a hash, not `'unsafe-inline'`.** The one inline script is the static JSON-LD block in `index.html` (as of Phase 2, an `@graph` of `ProfessionalService`/`WebSite`/`Service` entries, still 100% static and developer-controlled, no fake reviews or ratings). If you edit that JSON, regenerate the hash and update `vercel.json`:
   ```bash
   node -e "const fs=require('fs');const c=require('crypto');const m=fs.readFileSync('index.html','utf8').match(/<script type=\"application\/ld\+json\">([\s\S]*?)<\/script>/);console.log('sha256-'+c.createHash('sha256').update(m[1],'utf8').digest('base64'))"
   ```
   If you forget, the structured data silently stops rendering in browsers that enforce the CSP, it fails closed, not open, so this is a correctness bug to catch in review, not a security hole.
 - **`style-src` needs `'unsafe-inline'`.** Two components (`BrandMark.tsx`'s spinning ring, `SceneFallback.tsx`'s computed badge positions) use React's `style={{...}}` with runtime-computed values. These can't be hashed (the values differ per render) and can't use a nonce on a static site (nonces require per-request server generation). This is a low-risk accommodation: neither style is ever derived from user input, both are computed from hardcoded constants or a fixed data array, so there is no injection path an attacker could use even with `'unsafe-inline'` in play.
+- **`connect-src` now also allows `https://api.velnora.com`.** As of Phase 2 the frontend calls a separately-hosted backend API (`src/lib/api.ts`, via `VITE_API_URL`), a bare `connect-src 'self'` would silently block every `fetch()` to that origin once deployed (the browser's CSP layer, not the app, would drop the request). `https://api.velnora.com` is a **placeholder** consistent with this project's placeholder domain convention, replace it with the real production backend origin before going live, and keep it as an exact origin, never a wildcard.
 - **`frame-ancestors 'none'`** blocks this site from being embedded in an iframe anywhere, full clickjacking protection. `X-Frame-Options: DENY` is included alongside it for older browsers that don't read `frame-ancestors`.
 - **`upgrade-insecure-requests`** is a safety net; every resource this site loads is already HTTPS (verified against the built bundle, see Third-party resources above).
 
@@ -140,33 +141,49 @@ None of the above changes touch page titles, meta descriptions, canonical URLs, 
 - `git status` is clean of untracked secret-shaped files; `npm audit` and the codebase search found nothing to remove.
 - **If a real secret is ever accidentally committed in the future:** removing it from the current working tree or a new commit is not sufficient, it remains in git history and can be recovered by anyone with repo access (including anyone who already cloned it). The correct process is: rotate/revoke the credential at its source immediately, then separately deal with purging history (e.g. `git filter-repo`) if the repo is or was public. This document does not perform credential rotation, that must be done by whoever owns the exposed credential.
 
-## Known limitations (frontend-only phase)
+## Backend / API security (Phase 2)
 
-- Client-side validation, file-type/size checks, and URL parsing are UX conveniences. None of them are enforced once a request leaves the browser.
-- There is no rate limiting, no CSRF protection, and no authentication, because there is no backend yet for any of those to protect.
-- The CSP and headers in `vercel.json` only apply if this project is actually deployed to Vercel. Confirm equivalent configuration on whatever host is used in production.
-- `frame-ancestors` and other headers cannot be verified from a static Vite dev server, they must be checked against the real deployed response headers (e.g. via browser DevTools' Network tab or `curl -I`) after deployment.
+The backend (`backend/`, see [backend/README.md](backend/README.md)) is a separate Express + PostgreSQL + Prisma service. It is what now actually enforces the checks the frontend can only suggest.
+
+- **Server-side validation, not just client-side.** Every public POST body (`/api/contact`, `/api/project-inquiry`) is validated by a Zod schema (`backend/src/validators/`) before a controller ever sees it, independent of and stricter than the frontend's own `src/lib/validation.ts` checks. Schemas use `.strict()`, so unknown fields are rejected outright rather than silently dropped or persisted. URL fields (`repoLink`) are checked with the same `isSafeHttpUrl()`-style `http(s)`-only allowlist approach as the frontend (reimplemented server-side in `backend/src/validators/shared.ts`, since backend code never imports frontend code), not Zod's permissive built-in `.url()`, which would accept `javascript:`/`data:`/etc.
+- **Rate limiting.** `POST /api/contact` and `POST /api/project-inquiry` are rate-limited via `express-rate-limit` (`backend/src/middleware/rateLimiter.ts`), window and max request count configurable via `CONTACT_RATE_LIMIT_WINDOW_MS`/`CONTACT_RATE_LIMIT_MAX` env vars so limits can be tuned per environment without a code change.
+- **CORS allowlist.** The API only responds to origins listed in `FRONTEND_URL` (comma-separated, `backend/src/config/env.ts`); there is no wildcard `*` origin, and a disallowed origin gets a clean `403 {"success": false, ...}` JSON response rather than a raw CORS error or a silently-missing header.
+- **Helmet + baseline headers.** `helmet()` sets standard secure headers on every response; `X-Powered-By` is explicitly disabled (`app.disable('x-powered-by')`) so the framework/version isn't advertised.
+- **No leaked error detail.** The centralized error handler (`backend/src/middleware/errorHandler.ts`) never returns a stack trace, raw database error, or file path in an API response, expected failures (validation, not-found, rate limit) return a safe typed message, and unexpected failures return a generic message in production. The real underlying error is preserved via the native `Error.cause` chain so it can still be logged server-side for debugging, this is deliberately a logging-only channel, it never reaches the HTTP response. One honest caveat: Prisma's own driver-level console logging (`log: ['error']` in `backend/src/database/prisma.ts`) can surface the database *username* in a connection-failure message during local development, never the password, and this is server-side console output only, not something returned to a client; a hardened production setup should still route that log through a log aggregator with access controls rather than a raw console, that's listed under "Future backend security requirements" below.
+- **Safe structured logging.** `backend/src/utils/logger.ts` only accepts a short event-name string and a small metadata object, there's no code path that lets a caller accidentally log an entire request body or a raw `Error` object, which is what would otherwise risk writing PII (names, emails, message contents) into logs.
+- **Request size limits.** JSON bodies are capped at 20kb (`express.json({ limit: '20kb' })`), well above any legitimate form submission but enough to blunt trivial large-payload abuse before it reaches validation.
+- **Dependency hygiene.** `npm audit` on the backend is clean (0 vulnerabilities); two transitive vulnerabilities found during setup (`qs` via `express`'s `body-parser`, `deepmerge-ts` via Prisma's config loader) were fixed with a `package.json` `overrides` block pinning both to patched versions, rather than force-upgrading the direct dependencies that pull them in.
+- **Database access.** All queries go through Prisma's generated client (parameterized under the hood), there is no raw string-concatenated SQL anywhere in the backend, so standard SQL injection is not a live risk today. The `DATABASE_URL` connection string and all other secrets live only in `backend/.env` (gitignored, confirmed via `git check-ignore`) and are never exposed to the frontend or committed to source control.
+
+None of this is authentication, there is still no login, no session, and no concept of a logged-in user anywhere in the system, every endpoint above is intentionally public. See "Future backend security requirements" for what closes that gap in a later phase.
+
+## Known limitations (Phase 2: frontend + backend, no auth yet)
+
+- There is still no authentication, no sessions, no CSRF protection, and no admin/user role separation anywhere in the system, every existing API endpoint is intentionally public (see `backend/README.md`'s "What's deliberately NOT built here"). The `User` Prisma model exists only as schema preparation for Phase 3, no route reads or writes it yet.
+- Client-side validation, file-type/size checks, and URL parsing remain UX conveniences on the frontend. They are no longer the only line of defense (the backend now independently re-validates everything), but they still don't guarantee anything on their own, always assume a request can bypass the browser entirely.
+- File uploads (`FileHandover.tsx`) are still staged client-side only, there is no upload endpoint; when one is built it must validate file content by inspecting bytes, not the filename or extension, and enforce size limits server-side.
+- The CSP and headers in `vercel.json` only cover the frontend's static deployment. The backend, deployed separately, needs its own equivalent security headers reviewed at deployment time (Phase 7).
+- `frame-ancestors` and other frontend headers cannot be verified from a static Vite dev server, they must be checked against the real deployed response headers (e.g. via browser DevTools' Network tab or `curl -I`) after deployment.
+- The backend currently runs against a local development database with placeholder credentials; production deployment needs a real, least-privilege database user and a strong unique password (see `backend/README.md`'s Database setup section), never reuse the local dev password.
 
 ## Future backend security requirements (do not implement yet)
 
-When a backend/database is introduced, it must include:
+Now that the backend exists, some of this list has shrunk, ~~server-side validation and sanitization~~ and ~~rate limiting~~ are implemented (see "Backend / API security" above). Still needed, in a later phase:
 
-- Server-side validation and sanitization of every field this frontend already validates client-side (name, email, phone, company, message, URLs, file uploads), never trust the client.
-- Authentication and authorization (including admin role separation, if an admin dashboard is added).
+- Authentication and authorization (including admin role separation, if an admin dashboard is added). The `User` Prisma model is already prepared for this (Phase 3).
 - Password hashing with a modern algorithm (e.g. argon2id/bcrypt), never plaintext or reversible encryption.
 - Secure server-managed sessions (`httpOnly`, `Secure`, `SameSite` cookies) rather than client-stored tokens.
-- CSRF protection on any state-changing endpoint reachable from a browser session.
-- Rate limiting and abuse protection on public endpoints (contact form, audit request, lead capture, any future API).
-- API authentication for any endpoint not meant to be fully public.
-- Database access controls (least-privilege DB users, parameterized queries/ORM usage, no string-concatenated SQL) to prevent SQL/NoSQL injection.
-- Server-side secret management (a proper secrets manager or environment variables that never leave the server), never a `VITE_*` variable for anything sensitive.
-- File upload handling that validates content type by inspecting bytes, not filenames, enforces size limits server-side, and stores uploads outside of any web-executable path.
+- CSRF protection on any state-changing endpoint reachable from an authenticated browser session (today's two public POST endpoints don't carry session/cookie auth, so classic CSRF doesn't apply to them yet, this becomes necessary once sessions exist).
+- API authentication for any endpoint not meant to be fully public (e.g. future admin-only routes over `ContactSubmission`/`ProjectInquiry`/`Lead`).
+- Database access controls beyond parameterized queries: a least-privilege production DB user (separate from a migration/admin user), connection-level TLS in production, and periodic credential rotation.
+- Server-side secret management appropriate for the deployment target (a proper secrets manager or platform-injected environment variables), the current `.env` file approach is fine for local development but should not be how production secrets are managed long-term.
+- File upload handling that validates content type by inspecting bytes, not filenames, enforces size limits server-side, and stores uploads outside of any web-executable path, once a real upload endpoint is built.
 - Audit logging for sensitive actions once there are any (admin actions, data exports, auth events).
-- Input sanitization at the API boundary in addition to database-layer protections.
+- Routing the structured logger's output to a proper log aggregation/monitoring service with access controls, rather than plain stdout/console (Phase 7).
 
 ## Reporting a security issue
 
-This is a Phase 1 frontend-only project without a public bug bounty program. If you find a security issue, contact the project owner directly at `muhammadsaqib9117994@gmail.com` rather than filing a public issue, especially before a backend exists and any report could reference infrastructure that isn't public yet.
+This is a Phase 2 project (frontend + backend, no auth yet) without a public bug bounty program. If you find a security issue, contact the project owner directly at `muhammadsaqib9117994@gmail.com` rather than filing a public issue, especially given the backend is still pre-authentication and any report could reference infrastructure that isn't fully hardened yet.
 
 ## Commands used for this audit
 
@@ -180,4 +197,4 @@ Plus full-project text searches (not reproduced here) for: `dangerouslySetInnerH
 
 ---
 
-**Frontend security hardening completed.** This is not a claim that the site is "100% secure", no audit can make that claim, especially before a backend exists to evaluate. It reflects the current state of a genuinely clean, minimal-surface frontend with real hardening applied where gaps existed.
+**Frontend hardening and initial backend security foundation completed.** This is not a claim that the system is "100% secure", no audit can make that claim, especially before authentication exists. It reflects the current state of a clean, minimal-surface frontend and a backend with server-side validation, rate limiting, a CORS allowlist, and safe error handling in place, with the remaining gaps (auth, CSRF, sessions, admin protection) explicitly tracked above rather than glossed over.

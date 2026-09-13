@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, Mail, MessageSquareText, ShieldCheck, Zap } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ChevronDown, Mail, MessageSquareText, ShieldCheck, Zap } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { FileHandover } from '@/components/contact/FileHandover'
 import { TrustGuarantees } from '@/components/contact/TrustGuarantees'
@@ -8,12 +8,8 @@ import { fieldInputClass, selectFieldClass } from '@/components/ui/fieldStyles'
 import { GlassPanel } from '@/components/ui/GlassPanel'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHeading } from '@/components/ui/SectionHeading'
-import {
-  submitContactForm,
-  validateContactForm,
-  type ContactFormData,
-  type ContactFormErrors,
-} from '@/lib/contact'
+import { ApiNetworkError, apiPost } from '@/lib/api'
+import { validateContactForm, type ContactFormData, type ContactFormErrors } from '@/lib/contact'
 import { ESTIMATE_REQUEST_EVENT, type PendingEstimate } from '@/lib/estimateHandoff'
 import { MAX_LENGTHS } from '@/lib/validation'
 
@@ -33,6 +29,7 @@ export function Contact() {
   const [attachments, setAttachments] = useState<File[]>([])
   const [errors, setErrors] = useState<ContactFormErrors>({})
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle')
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     function handleEstimateRequest(event: Event) {
@@ -67,9 +64,52 @@ export function Contact() {
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
 
+    setSubmitError(null)
     setStatus('submitting')
-    await submitContactForm(form, attachments)
-    setStatus('success')
+
+    // Attachments and repoLink are collected for context, but real file
+    // bytes aren't uploaded anywhere yet (see FileHandover.tsx), only the
+    // text fields go to the backend.
+    try {
+      const result = await apiPost<{ id: string }>('/project-inquiry', {
+        name: form.name,
+        email: form.email,
+        company: form.company || undefined,
+        phone: form.phone || undefined,
+        projectType: form.projectType || undefined,
+        budgetRange: form.budget || undefined,
+        message: form.message,
+        repoLink: form.repoLink || undefined,
+      })
+
+      if (result.success) {
+        setStatus('success')
+        return
+      }
+
+      if (result.errors) {
+        setErrors({
+          name: result.errors.name,
+          email: result.errors.email,
+          company: result.errors.company,
+          phone: result.errors.phone,
+          projectType: result.errors.projectType,
+          budget: result.errors.budgetRange,
+          message: result.errors.message,
+          repoLink: result.errors.repoLink,
+        })
+      } else {
+        setSubmitError(result.message)
+      }
+      setStatus('idle')
+    } catch (error) {
+      setSubmitError(
+        error instanceof ApiNetworkError
+          ? error.message
+          : 'Something went wrong on our end. Please try again shortly.',
+      )
+      setStatus('idle')
+    }
   }
 
   if (status === 'success') {
@@ -92,6 +132,7 @@ export function Contact() {
                 setForm(initialForm)
                 setAttachments([])
                 setErrors({})
+                setSubmitError(null)
                 setStatus('idle')
               }}
             >
@@ -243,6 +284,15 @@ export function Contact() {
                   />
                 </Field>
               </div>
+
+              {submitError ? (
+                <div className="flex items-start gap-2.5 rounded-[var(--radius-field)] border border-red-400/30 bg-red-400/10 px-4 py-3 sm:col-span-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" strokeWidth={1.75} />
+                  <p role="alert" className="text-sm text-red-400">
+                    {submitError}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="sm:col-span-2">
                 <Button

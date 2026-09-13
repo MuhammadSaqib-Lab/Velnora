@@ -1,0 +1,127 @@
+// Velnora backend database schema.
+//
+// Design notes:
+// - `projectType` / `budgetRange` are plain strings, not Prisma enums. The
+//   underlying value set (e.g. "1k-2.5k", "not-sure") is UI copy owned by
+//   the frontend (src/sections/Contact.tsx) and has already changed once
+//   during this project. Making it a DB enum would require a migration
+//   every time marketing tweaks a pricing tier label. Strict validation of
+//   the allowed values happens at the API boundary (Zod, see
+//   src/validators), which is the right layer for values that are really
+//   "content" rather than fixed domain data.
+// - `SubmissionStatus` (internal triage state) and `LeadStatus` (a
+//   different lifecycle for the future lead-finder feature) ARE enums,
+//   because those values are genuinely fixed and owned by us, not by
+//   frontend copy.
+// - `repoLink` on ProjectInquiry isn't in the original Phase 2 spec, it
+//   was added because the existing Contact form already collects it
+//   (see FileHandover.tsx) and dropping it silently would lose real user
+//   input. File attachments themselves are still not persisted anywhere,
+//   real storage (e.g. S3 + a presigned upload flow) is a future phase.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum SubmissionStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  ARCHIVED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DISQUALIFIED
+  CONVERTED
+}
+
+/// Prepared for Phase 3 (authentication). Not used by any endpoint yet.
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+/// General "contact us" submissions. No public frontend form posts here
+/// yet (the existing Contact form maps to ProjectInquiry, see above), but
+/// the endpoint is fully implemented for a future, simpler contact touchpoint.
+model ContactSubmission {
+  id           String            @id @default(cuid())
+  name         String
+  email        String
+  company      String?
+  phone        String?
+  projectType  String?
+  budgetRange  String?
+  message      String
+  status       SubmissionStatus  @default(NEW)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_submissions")
+}
+
+/// The site's main "Start a Project" form (src/sections/Contact.tsx).
+model ProjectInquiry {
+  id           String            @id @default(cuid())
+  name         String
+  email        String
+  company      String?
+  phone        String?
+  projectType  String?
+  budgetRange  String?
+  message      String
+  repoLink     String?
+  status       SubmissionStatus  @default(NEW)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("project_inquiries")
+}
+
+/// Preparation only for a future lead-finder feature. No route/controller
+/// in this phase reads or writes this model.
+model Lead {
+  id               String     @id @default(cuid())
+  businessName     String
+  website          String?
+  email            String?
+  phone            String?
+  location         String?
+  source           String?
+  status           LeadStatus @default(NEW)
+  opportunityScore Int?
+  notes            String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([status])
+  @@index([opportunityScore])
+  @@map("leads")
+}

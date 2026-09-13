@@ -64,22 +64,10 @@ export function validateContactForm(data: ContactFormData): ContactFormErrors {
 export const ACCEPTED_HANDOVER_EXTENSIONS = ['.zip', '.rar', '.7z', '.tar', '.gz'] as const
 export const MAX_HANDOVER_FILE_SIZE_BYTES = 50 * 1024 * 1024
 
-/**
- * Frontend-only for this phase. Swap the body of this function for a real
- * request (e.g. `fetch('/api/contact', { method: 'POST', body: ... })`)
- * once a backend exists, the Contact section only depends on this
- * function's signature, so the UI won't need to change.
- *
- * `attachments` are staged client-side only right now (see FileHandover.tsx),
- * actual file transfer needs a real upload endpoint (presigned URL or
- * multipart handler) and isn't wired up yet. File extension/size checks
- * here are UX only, a real upload endpoint must re-validate file type by
- * content (not filename) and size server-side.
- */
-export async function submitContactForm(
-  _data: ContactFormData,
-  _attachments: File[] = [],
-): Promise<{ ok: true }> {
-  await new Promise((resolve) => setTimeout(resolve, 900))
-  return { ok: true }
-}
+// Submission itself is handled by src/lib/api.ts's apiPost, called
+// directly from Contact.tsx, this file only validates. Attachments
+// (see FileHandover.tsx) are still staged client-side only; actual file
+// transfer needs a real upload endpoint (presigned URL or multipart
+// handler), which isn't built yet. File extension/size checks there are
+// UX only, a real upload endpoint must re-validate file type by content
+// (not filename) and size server-side.

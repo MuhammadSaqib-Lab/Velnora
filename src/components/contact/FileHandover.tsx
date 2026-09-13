@@ -34,8 +34,9 @@ function isAcceptedFile(file: File) {
 
 /**
  * Files are staged client-side only, there's no upload endpoint yet
- * (see submitContactForm in lib/contact.ts). The copy here deliberately
- * avoids implying a real transfer happens until that's wired up.
+ * (the backend accepts the text fields in this form, not file bytes).
+ * The copy here deliberately avoids implying a real transfer happens
+ * until that's wired up.
  */
 export function FileHandover({
   files,

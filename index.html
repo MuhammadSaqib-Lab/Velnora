@@ -44,26 +44,76 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!--
-      Organization structured data. Static and developer-controlled only,
-      never inject user input here. If you edit the JSON below, regenerate
-      the matching CSP script-src hash (see SECURITY.md) or a strict CSP
-      will silently block this block in browsers that enforce it.
+      Structured data (Organization/ProfessionalService, WebSite, and the
+      service catalog). Static and developer-controlled only, mirrors
+      src/data/services.ts, never inject user input here. If you edit the
+      JSON below, regenerate the matching CSP script-src hash (see
+      SECURITY.md) or a strict CSP will silently block this block in
+      browsers that enforce it.
     -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "ProfessionalService",
-        "name": "Velnora",
-        "description": "AI-powered web development agency building high-performance websites, SEO strategies, and digital experiences for growing businesses.",
-        "url": "https://www.velnora.com/",
-        "areaServed": "Worldwide",
-        "knowsAbout": [
-          "Web Development",
-          "AI Solutions",
-          "Search Engine Optimization",
-          "UI/UX Design",
-          "Website Optimization",
-          "Business Automation"
+        "@graph": [
+          {
+            "@type": "ProfessionalService",
+            "@id": "https://www.velnora.com/#organization",
+            "name": "Velnora",
+            "description": "AI-powered web development agency building high-performance websites, SEO strategies, and digital experiences for growing businesses.",
+            "url": "https://www.velnora.com/",
+            "areaServed": "Worldwide",
+            "knowsAbout": [
+              "Web Development",
+              "AI Solutions",
+              "Search Engine Optimization",
+              "UI/UX Design",
+              "Website Optimization",
+              "Business Automation"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.velnora.com/#website",
+            "name": "Velnora",
+            "url": "https://www.velnora.com/",
+            "publisher": { "@id": "https://www.velnora.com/#organization" }
+          },
+          {
+            "@type": "Service",
+            "name": "Website Development",
+            "provider": { "@id": "https://www.velnora.com/#organization" },
+            "description": "Custom-built websites on modern frameworks, structured around how your customers actually decide to buy, book, or reach out."
+          },
+          {
+            "@type": "Service",
+            "name": "AI-Powered Solutions",
+            "provider": { "@id": "https://www.velnora.com/#organization" },
+            "description": "AI-assisted search, content, and support tooling layered into your site so routine questions and tasks stop landing in your inbox."
+          },
+          {
+            "@type": "Service",
+            "name": "SEO",
+            "provider": { "@id": "https://www.velnora.com/#organization" },
+            "description": "Technical SEO, content structure, and on-page fundamentals built in from day one, not bolted on after launch."
+          },
+          {
+            "@type": "Service",
+            "name": "UI/UX Design",
+            "provider": { "@id": "https://www.velnora.com/#organization" },
+            "description": "Interface and interaction design grounded in your actual user flows, tested against clarity before a line of code ships."
+          },
+          {
+            "@type": "Service",
+            "name": "Website Optimization",
+            "provider": { "@id": "https://www.velnora.com/#organization" },
+            "description": "Performance audits and fixes across images, scripts, and hosting so pages load fast on real connections, not just fast Wi-Fi."
+          },
+          {
+            "@type": "Service",
+            "name": "Business Automation",
+            "provider": { "@id": "https://www.velnora.com/#organization" },
+            "description": "Workflow automation connecting your forms, inbox, and scheduling so qualified leads move forward without manual follow-up."
+          }
         ]
       }
     </script>

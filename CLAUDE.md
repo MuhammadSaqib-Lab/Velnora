@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 Velnora, a premium AI-powered web development agency site. The agency builds high-performance websites, SEO solutions, AI-powered digital solutions, and business automation for growing businesses. This repo is the agency's own marketing site.
 
-**Phase 1 (current): frontend only.** No backend, database, auth, admin dashboard, AI agents, payments, or CRM. The architecture is deliberately structured so those can be layered on later without a redesign, see "Future phases" below.
+**Phase 2 (current): frontend + backend/database/API.** Still no auth, admin dashboard, AI agents, payments, or CRM. The architecture is deliberately structured so those can be layered on later without a redesign, see "Future phases" below.
 
 ## Stack (decided, do not re-litigate without reason)
 
@@ -18,6 +18,8 @@ Velnora, a premium AI-powered web development agency site. The agency builds hig
 - **react-helmet-async** for per-page SEO metadata. Add new pages' metadata to `src/lib/seoConfig.ts`, not inline in components.
 - **Lucide React** for icons (single icon family, do not mix in another).
 - **oxlint** for linting (`npm run lint`), not eslint.
+
+**Backend** (`backend/`, a separate Node project, see `backend/README.md`): Express 4 + TypeScript + Prisma/PostgreSQL + Zod. Controllers thin, business logic in `services/`, every public POST body validated by a Zod schema in `validators/` before a controller sees it. Don't import backend code into the frontend or vice versa, they're separately deployable; shared concepts (e.g. the allowed `projectType`/`budgetRange` values) are intentionally duplicated in both places rather than cross-imported, keep both in sync by hand if you change one (frontend: `src/sections/Contact.tsx`'s `<select>` options; backend: `backend/src/validators/shared.ts`).
 
 ## Design system
 
@@ -37,8 +39,11 @@ Velnora, a premium AI-powered web development agency site. The agency builds hig
 
 ## Future phases (do not build yet, but keep the door open)
 
-- Client-handling AI agent (chat, lead qualification) and a lead-finder agent are planned. Nothing in the frontend should assume their absence in a way that would require a rewrite (e.g. the Contact form's `submitContactForm` in `src/lib/contact.ts` is already isolated behind a single function so it can be swapped for a real API call, or extended with an agent handoff, without touching the UI).
-- Backend/CMS/auth: none yet. When one is added, wire it in behind existing function boundaries (`src/lib/contact.ts`, `src/lib/seoConfig.ts`) rather than rewriting sections.
+- Phase 3: authentication (the `User` Prisma model already exists as preparation, no endpoint uses it yet), CSRF protection, secure sessions.
+- Phase 4: client-handling AI agent (chat, lead qualification). The Contact form's submission already goes through one function (`apiPost` in `src/lib/api.ts` calling `POST /api/project-inquiry`), extend there rather than rewriting the form.
+- Phase 5: lead-finder agent. The `Lead` Prisma model already exists as preparation (`backend/prisma/schema.prisma`), no route/controller reads or writes it yet, don't add one until this phase.
+- Phase 6: admin dashboard (to triage `ContactSubmission`/`ProjectInquiry`/`Lead` rows).
+- Phase 7: deployment, monitoring, final security audit.
 
 ## Before going live
 
