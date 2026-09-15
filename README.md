@@ -1,8 +1,8 @@
 # Velnora
 
-Velnora is a premium AI-powered web development agency site. The frontend communicates web development, AI-powered solutions, SEO, UI/UX design, and business automation services, built as a fast, accessible, SEO-ready single-page marketing site, backed by a REST API for form intake.
+Velnora is a premium AI-powered web development agency site. The frontend communicates web development, AI-powered solutions, SEO, UI/UX design, and business automation services, built as a fast, accessible, SEO-ready single-page marketing site, backed by a REST API for form intake and an AI Client Handling Agent (chat consultant).
 
-This is **Phase 2: frontend + backend/database/API**. Still no authentication, admin dashboard, or AI agent integration, see [CLAUDE.md](CLAUDE.md) for the full phase breakdown.
+**Phase 2 (frontend + backend/database/API) is done, and the AI Client Handling Agent is now built.** Still no authentication, admin dashboard, lead-finder agent, or payments, see [CLAUDE.md](CLAUDE.md) for the full phase breakdown.
 
 ## Stack
 
@@ -20,6 +20,7 @@ This is **Phase 2: frontend + backend/database/API**. Still no authentication, a
 - **PostgreSQL + Prisma**
 - **Zod** for server-side validation
 - **Helmet, cors, express-rate-limit** for the API security baseline
+- **`@anthropic-ai/sdk`** powering the AI Client Handling Agent, behind a provider-agnostic interface (`backend/src/ai/`)
 
 ## Getting Started
 
@@ -54,6 +55,7 @@ npm run lint      # oxlint
 ```
 src/                        (frontend)
   components/
+    chat/       FloatingChatWidget — the AI Consultant UI, talks to POST /api/ai/chat
     layout/     Navbar, MobileMenu, Footer
     three/      R3F hero scene + CSS fallback
     ui/         Button, GlassPanel, Reveal, SectionHeading, Field
@@ -65,6 +67,7 @@ src/                        (frontend)
 
 backend/                     (API, see backend/README.md)
   src/          config, controllers, routes, services, middleware, validators
+  src/ai/       AI Client Handling Agent — providers, prompts, knowledge, tools
   prisma/       schema.prisma, seed data
   tests/        Vitest + Supertest suite
 ```
@@ -73,7 +76,9 @@ backend/                     (API, see backend/README.md)
 
 The Contact section (`src/sections/Contact.tsx`) posts to the backend's `POST /api/project-inquiry` via `src/lib/api.ts`. It handles four distinct outcomes: success, field-level validation errors (shown inline, same as client-side errors), a general server error (shown as a banner), and a network failure (backend unreachable), each with its own user-facing message, none of them ever surface raw error detail from the server.
 
-The Free Audit form and the floating chat's quick-message box remain frontend-only for this phase (no backend endpoint exists for them yet), this is intentional scope, not an oversight, see `backend/README.md`'s "What's deliberately NOT built here".
+The floating chat widget (`src/components/chat/FloatingChatWidget.tsx`) is a real AI consultant, not a stub — it talks to `POST /api/ai/chat` and can qualify a visitor and save their details as a lead for the team. See `backend/README.md`'s "AI Client Handling Agent" section for the full architecture, and [SECURITY.md](SECURITY.md) for its prompt-injection and abuse-protection design.
+
+The Free Audit form remains frontend-only for this phase (no backend endpoint exists for it yet), this is intentional scope, not an oversight, see `backend/README.md`'s "What's deliberately NOT built here".
 
 ## SEO
 
@@ -88,6 +93,7 @@ The architecture is ready for future SEO expansion (dedicated `/services/*`, `/i
 - `vercel.json`'s CSP `connect-src` currently allowlists the placeholder `https://api.velnora.com`, replace it with the real backend origin (exact origin, no wildcard) once it's deployed, or the frontend's API calls will be silently blocked by the browser's CSP in production
 - Provision a real production PostgreSQL database and set a strong, unique `DATABASE_URL` (never reuse the local dev password)
 - Set `NODE_ENV=production` and a real `FRONTEND_URL` (no wildcard, no localhost) for the backend in production
+- Set a real `ANTHROPIC_API_KEY` in the backend's production environment for the AI Consultant to actually respond (it degrades to a friendly "not configured" message without one, the rest of the site still works)
 - See `backend/README.md`'s "What's deliberately NOT built here" and [SECURITY.md](SECURITY.md)'s "Future backend security requirements" for what's still needed before this handles real user data at scale (auth, CSRF, file upload validation, etc.)
 
 ## Deployment

@@ -14,6 +14,19 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().min(1, 'FRONTEND_URL is required'),
   CONTACT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   CONTACT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+
+  // AI Client Handling Agent (Phase 3). Optional by design: the rest of
+  // the API must keep working even before a real key is provisioned, the
+  // AI endpoint alone degrades to a friendly "not configured" error
+  // (see backend/src/services/aiChat.service.ts) rather than the whole
+  // server failing to start.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  AI_MODEL: z.string().min(1).default('claude-opus-5'),
+  AI_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('low'),
+  AI_MAX_TOKENS: z.coerce.number().int().positive().default(1024),
+  AI_CHAT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
+  AI_CHAT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  AI_MAX_MESSAGES_PER_CONVERSATION: z.coerce.number().int().positive().default(40),
 })
 
 function loadEnv() {

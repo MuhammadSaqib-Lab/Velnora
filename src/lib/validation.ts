@@ -16,7 +16,7 @@ export const MAX_LENGTHS = {
   phone: 30,
   message: 2000,
   url: 500,
-  quickMessage: 500,
+  chatMessage: 2000, // must match backend/src/validators/aiChat.validator.ts
 } as const
 
 const ALLOWED_URL_PROTOCOLS = new Set(['http:', 'https:'])

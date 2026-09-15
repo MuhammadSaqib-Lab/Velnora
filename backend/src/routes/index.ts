@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { aiChatRouter } from './aiChat.routes.js'
 import { contactRouter } from './contact.routes.js'
 import { projectsRouter, servicesRouter } from './content.routes.js'
 import { healthRouter } from './health.routes.js'
@@ -11,3 +12,4 @@ apiRouter.use('/contact', contactRouter)
 apiRouter.use('/project-inquiry', projectInquiryRouter)
 apiRouter.use('/services', servicesRouter)
 apiRouter.use('/projects', projectsRouter)
+apiRouter.use('/ai', aiChatRouter)

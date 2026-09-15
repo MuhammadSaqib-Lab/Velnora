@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 Velnora, a premium AI-powered web development agency site. The agency builds high-performance websites, SEO solutions, AI-powered digital solutions, and business automation for growing businesses. This repo is the agency's own marketing site.
 
-**Phase 2 (current): frontend + backend/database/API.** Still no auth, admin dashboard, AI agents, payments, or CRM. The architecture is deliberately structured so those can be layered on later without a redesign, see "Future phases" below.
+**Phase 2 (frontend + backend/database/API) is done. The AI Client Handling Agent is now built** (originally scoped as "Phase 4" below, built ahead of Phase 3 at explicit request — the numbering in "Future phases" below still reflects the original plan). Still no auth, admin dashboard, lead-finder agent, payments, or CRM. The architecture is deliberately structured so those can be layered on later without a redesign, see "Future phases" below.
 
 ## Stack (decided, do not re-litigate without reason)
 
@@ -20,6 +20,8 @@ Velnora, a premium AI-powered web development agency site. The agency builds hig
 - **oxlint** for linting (`npm run lint`), not eslint.
 
 **Backend** (`backend/`, a separate Node project, see `backend/README.md`): Express 4 + TypeScript + Prisma/PostgreSQL + Zod. Controllers thin, business logic in `services/`, every public POST body validated by a Zod schema in `validators/` before a controller sees it. Don't import backend code into the frontend or vice versa, they're separately deployable; shared concepts (e.g. the allowed `projectType`/`budgetRange` values) are intentionally duplicated in both places rather than cross-imported, keep both in sync by hand if you change one (frontend: `src/sections/Contact.tsx`'s `<select>` options; backend: `backend/src/validators/shared.ts`).
+
+**AI Client Handling Agent** (`backend/src/ai/`, see backend/README.md's "AI Client Handling Agent" section): a chat consultant surfaced via `src/components/chat/FloatingChatWidget.tsx`, talking to `POST /api/ai/chat`. Provider-agnostic by design — business logic (`backend/src/services/aiChat.service.ts`) only imports from `backend/src/ai/providers/types.ts`, never the Anthropic SDK directly (that's isolated to `AnthropicProvider.ts`). To change what the agent knows, edit `backend/src/ai/knowledge/velnoraKnowledge.ts`; to change its tone/rules, edit `backend/src/ai/prompts/systemPrompt.ts`. Its only tool (`save_lead`) can create exactly one new `QualifiedLead` row and nothing else — no update, delete, or read access — that's the actual defense against prompt-injected destructive requests, not just prompt wording.
 
 ## Design system
 
@@ -39,10 +41,10 @@ Velnora, a premium AI-powered web development agency site. The agency builds hig
 
 ## Future phases (do not build yet, but keep the door open)
 
-- Phase 3: authentication (the `User` Prisma model already exists as preparation, no endpoint uses it yet), CSRF protection, secure sessions.
-- Phase 4: client-handling AI agent (chat, lead qualification). The Contact form's submission already goes through one function (`apiPost` in `src/lib/api.ts` calling `POST /api/project-inquiry`), extend there rather than rewriting the form.
-- Phase 5: lead-finder agent. The `Lead` Prisma model already exists as preparation (`backend/prisma/schema.prisma`), no route/controller reads or writes it yet, don't add one until this phase.
-- Phase 6: admin dashboard (to triage `ContactSubmission`/`ProjectInquiry`/`Lead` rows).
+- **Phase 4, client-handling AI agent: done** (see "AI Client Handling Agent" above), built ahead of Phase 3 at explicit request. Kept for history: it originally read "chat, lead qualification, extend the Contact form's `apiPost` call rather than rewriting it" — the agent is a separate `POST /api/ai/chat` endpoint instead, since it needed its own conversation/tool-call round trips that don't fit the single-shot `POST /api/project-inquiry` shape; the Contact form itself is untouched.
+- Phase 3: authentication (the `User` Prisma model already exists as preparation, no endpoint uses it yet), CSRF protection, secure sessions. Still not built, despite being numbered before the now-done Phase 4.
+- Phase 5: lead-finder agent. The `Lead` Prisma model already exists as preparation (`backend/prisma/schema.prisma`), distinct from the AI Client Handling Agent's own `QualifiedLead` model — no route/controller reads or writes `Lead` yet, don't add one until this phase.
+- Phase 6: admin dashboard (to triage `ContactSubmission`/`ProjectInquiry`/`Lead`/`QualifiedLead` rows).
 - Phase 7: deployment, monitoring, final security audit.
 
 ## Before going live
