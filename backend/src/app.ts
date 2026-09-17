@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
@@ -29,12 +30,21 @@ export function createApp() {
         }
         callback(new Error('Not allowed by CORS'))
       },
+      // Required for the admin session cookie: without this, the browser
+      // refuses to send/receive it on the frontend's cross-origin fetch
+      // calls even though `origin` above is never a wildcard (a hard
+      // requirement for credentialed CORS anyway).
+      credentials: true,
     }),
   )
 
   // Generous enough for every field this API accepts (see validators),
   // small enough to make a body-size abuse attempt pointless.
   app.use(express.json({ limit: '20kb' }))
+
+  // Only used to read the admin session cookie (req.cookies); nothing in
+  // this API is signed-cookie based, so no secret is passed here.
+  app.use(cookieParser())
 
   app.use('/api', apiRouter)
 

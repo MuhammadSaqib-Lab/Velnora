@@ -29,11 +29,20 @@ export interface AIGenerateResult {
   stopReason: string | null
 }
 
+export type AIEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
 export interface AIProvider {
   generateResponse(params: {
     system: string
     messages: AIMessage[]
     tools?: AIToolDefinition[]
+    /** Per-call overrides — omit to use the provider's configured
+     * defaults (AI_EFFORT/AI_MAX_TOKENS). Used by callers with different
+     * cost/quality tradeoffs than the chat agent, e.g. the Lead Finder's
+     * email generation (LEAD_EMAIL_AI_EFFORT), without changing the
+     * chat agent's own behavior. */
+    effort?: AIEffort
+    maxTokens?: number
   }): Promise<AIGenerateResult>
 
   /** Cheap, no-network-call check of whether this provider is usable. */

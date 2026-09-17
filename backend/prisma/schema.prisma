@@ -23,10 +23,27 @@
 //   `SubmissionStatus` for triage, matching ContactSubmission/
 //   ProjectInquiry's vocabulary instead of inventing a fourth
 //   near-duplicate enum. It is intentionally a separate model from the
-//   existing `Lead` model above, which stays reserved for the future
-//   lead-finder agent (Phase 5, outbound prospecting) — a lead the AI
-//   consultant captures mid-conversation is a different lifecycle from a
-//   business the lead-finder discovers unprompted.
+//   `Lead` model below — a lead the AI consultant captures mid-conversation
+//   is a different lifecycle from a business the lead-finder discovers
+//   unprompted.
+// - Phase 4 (see backend/src/leadFinder/) extends the `Lead` model that
+//   was previously pure schema preparation. `opportunityScore` is reused
+//   as-is for the 0-100 score rather than adding a duplicate field.
+//   `domain` (normalized hostname from `website`) backs deduplication and
+//   carries a unique constraint — Postgres allows multiple NULLs in a
+//   unique index, so leads with no website never collide on it.
+//   `analysis`/`evidence` are structured JSON (research findings, per-
+//   opportunity evidence) rather than free text, kept separate from the
+//   existing `notes` field, which stays a simple human-editable note.
+// - AdminUser/AdminSession (Admin Dashboard authentication) are
+//   deliberately separate from the `User` model above rather than
+//   reusing it: `User` is still untouched schema preparation for a future
+//   general-purpose, multi-role auth system (Phase 3 proper), while
+//   AdminUser is a narrow, single-purpose account type for the one
+//   internal dashboard that exists today. Session tokens are never
+//   stored raw — `AdminSession.tokenHash` holds a SHA-256 digest of the
+//   random token the browser actually holds in its cookie, so a database
+//   read alone can never hand out a usable session credential.
 
 generator client {
   provider = "prisma-client-js"
@@ -51,10 +68,29 @@ enum SubmissionStatus {
 
 enum LeadStatus {
   NEW
-  CONTACTED
+  RESEARCHED
   QUALIFIED
-  DISQUALIFIED
+  EMAIL_DRAFTED
+  CONTACTED
+  REPLIED
+  NOT_INTERESTED
   CONVERTED
+  DISQUALIFIED
+}
+
+enum OpportunityType {
+  NO_WEBSITE
+  OLD_WEBSITE
+  POOR_MOBILE
+  WEAK_SEO
+  AI_AUTOMATION
+}
+
+enum LeadPriority {
+  EXCELLENT
+  STRONG
+  POTENTIAL
+  LOW
 }
 
 enum ConversationStatus {
@@ -131,24 +167,43 @@ model ProjectInquiry {
   @@map("project_inquiries")
 }
 
-/// Preparation only for a future lead-finder feature. No route/controller
-/// in this phase reads or writes this model.
+/// Phase 4: AI Lead Finder Agent (backend/src/leadFinder/). Businesses
+/// discovered via research, never fabricated — every field here either
+/// comes from a real source (search provider, the business's own
+/// website) or is left null/unknown. `email`/`phone` are only ever
+/// populated from what was actually found; a lead with no verified email
+/// simply never reaches EMAIL_DRAFTED status.
 model Lead {
-  id               String     @id @default(cuid())
+  id               String            @id @default(cuid())
   businessName     String
+  category         String?
   website          String?
+  domain           String?
   email            String?
   phone            String?
   location         String?
   source           String?
-  status           LeadStatus @default(NEW)
+  sourceUrl        String?
+  opportunityTypes OpportunityType[]
   opportunityScore Int?
+  priority         LeadPriority?
+  status           LeadStatus        @default(NEW)
+  /// Structured research findings (design/mobile/SEO/AI-opportunity
+  /// observations) — see backend/src/leadFinder/analysis/.
+  analysis         Json?
+  /// Per-opportunity evidence + source, shown alongside opportunityTypes.
+  evidence         Json?
+  emailSubject     String?
+  emailBody        String?
+  gmailDraftId     String?
   notes            String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
+  @@unique([domain])
   @@index([status])
   @@index([opportunityScore])
+  @@index([priority])
   @@map("leads")
 }
 
@@ -187,6 +242,46 @@ model AIMessage {
 
   @@index([conversationId, createdAt])
   @@map("ai_messages")
+}
+
+/// Admin Dashboard authentication. One row per operator account able to
+/// log into /internal/admin. `passwordHash` is always a bcrypt hash,
+/// never a plaintext or reversibly-encrypted password — see
+/// backend/src/utils/passwordHash.ts and adminAuth.service.ts's
+/// bootstrapInitialAdminUser (creates the first row from
+/// ADMIN_EMAIL/ADMIN_PASSWORD, once, if no account exists yet).
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
+  sessions     AdminSession[]
+
+  @@map("admin_users")
+}
+
+/// A single logged-in browser session for an AdminUser, backing the
+/// httpOnly session cookie (backend/src/services/adminAuth.service.ts).
+/// `tokenHash` is a SHA-256 digest of the random token the cookie
+/// actually carries — the raw token is never persisted anywhere.
+model AdminSession {
+  id          String    @id @default(cuid())
+  adminUserId String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime  @default(now())
+  userAgent   String?
+  ipAddress   String?
+
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+  @@map("admin_sessions")
 }
 
 /// A lead the AI Consultant captured mid-conversation once qualified.

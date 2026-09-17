@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async'
 import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL, type PageSeoConfig } from './seoConfig'
 
-export function Seo({ title, description, path, keywords }: PageSeoConfig) {
+export function Seo({ title, description, path, keywords, robots = 'index, follow' }: PageSeoConfig) {
   const url = `${SITE_URL}${path}`
   const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`
 
@@ -12,6 +12,7 @@ export function Seo({ title, description, path, keywords }: PageSeoConfig) {
       {keywords && keywords.length > 0 ? (
         <meta name="keywords" content={keywords.join(', ')} />
       ) : null}
+      <meta name="robots" content={robots} />
       <link rel="canonical" href={url} />
 
       <meta property="og:type" content="website" />

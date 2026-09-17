@@ -12,20 +12,27 @@ export async function getHealth(_req: Request, res: Response) {
     databaseConnected = false
   }
 
-  // Whether the AI Consultant is configured at all — not a live call to
-  // the AI provider, which would turn a health check into a billable
-  // request. The AI provider being unreachable doesn't affect overall
-  // API health; POST /api/ai/chat handles that failure on its own.
+  // Whether the AI Consultant / Lead Finder providers are configured at
+  // all — never a live call to any of them, which would turn a health
+  // check into a billable request. A provider being unreachable doesn't
+  // affect overall API health; each feature's own endpoints handle that
+  // failure on their own.
   const aiConfigured = Boolean(env.ANTHROPIC_API_KEY)
+  const leadSearchConfigured = Boolean(env.GOOGLE_PLACES_API_KEY)
+  const gmailConfigured = Boolean(
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GOOGLE_REDIRECT_URI && env.GOOGLE_REFRESH_TOKEN,
+  )
 
   const response: ApiResponse<{
     databaseConnected: boolean
     aiConfigured: boolean
+    leadSearchConfigured: boolean
+    gmailConfigured: boolean
     timestamp: string
   }> = {
     success: true,
     message: 'OK',
-    data: { databaseConnected, aiConfigured, timestamp: new Date().toISOString() },
+    data: { databaseConnected, aiConfigured, leadSearchConfigured, gmailConfigured, timestamp: new Date().toISOString() },
   }
 
   res.status(databaseConnected ? 200 : 503).json(response)

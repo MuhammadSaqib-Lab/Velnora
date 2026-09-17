@@ -34,43 +34,72 @@ export class ApiNetworkError extends Error {
   }
 }
 
-export async function apiPost<T = unknown>(path: string, body: unknown): Promise<ApiResult<T>> {
+async function parseApiResult<T>(response: Response): Promise<ApiResult<T>> {
+  try {
+    return (await response.json()) as ApiResult<T>
+  } catch {
+    // Response wasn't JSON at all (e.g. a proxy/500 HTML error page).
+    return { success: false, message: 'Something went wrong on our end. Please try again shortly.' }
+  }
+}
+
+export async function apiPost<T = unknown>(
+  path: string,
+  body: unknown,
+  headers?: Record<string, string>,
+): Promise<ApiResult<T>> {
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Always sent: harmless for the public, cookie-less endpoints
+      // (contact, project inquiry, AI chat), and required for the Admin
+      // Dashboard's httpOnly session cookie (POST /api/auth/admin/login,
+      // /logout, and every /api/admin/* write) to actually flow on a
+      // cross-origin request — see backend SECURITY.md's "Admin
+      // Dashboard security" section for the CORS/cookie reasoning.
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify(body),
     })
   } catch {
     throw new ApiNetworkError()
   }
 
-  let payload: ApiResult<T>
-  try {
-    payload = (await response.json()) as ApiResult<T>
-  } catch {
-    // Response wasn't JSON at all (e.g. a proxy/500 HTML error page).
-    return {
-      success: false,
-      message: 'Something went wrong on our end. Please try again shortly.',
-    }
-  }
-
-  return payload
+  return parseApiResult<T>(response)
 }
 
-export async function apiGet<T = unknown>(path: string): Promise<ApiResult<T>> {
+export async function apiGet<T = unknown>(path: string, headers?: Record<string, string>): Promise<ApiResult<T>> {
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`)
+    response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include', headers })
   } catch {
     throw new ApiNetworkError()
   }
 
+  return parseApiResult<T>(response)
+}
+
+/**
+ * Used only by internal pages (src/pages/internal/) for PATCH requests —
+ * no public form needs PATCH today.
+ */
+export async function apiPatch<T = unknown>(
+  path: string,
+  body: unknown,
+  headers?: Record<string, string>,
+): Promise<ApiResult<T>> {
+  let response: Response
   try {
-    return (await response.json()) as ApiResult<T>
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+    })
   } catch {
-    return { success: false, message: 'Something went wrong on our end. Please try again shortly.' }
+    throw new ApiNetworkError()
   }
+
+  return parseApiResult<T>(response)
 }

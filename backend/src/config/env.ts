@@ -27,6 +27,52 @@ const envSchema = z.object({
   AI_CHAT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
   AI_CHAT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   AI_MAX_MESSAGES_PER_CONVERSATION: z.coerce.number().int().positive().default(40),
+
+  // AI Lead Finder Agent (Phase 4). All optional, same reasoning as the
+  // AI Client Handling Agent above: the rest of the API must keep
+  // working without any of these, individual /api/leads/* operations
+  // degrade to a clear "not configured" error instead.
+  LEAD_FINDER_ADMIN_TOKEN: z.string().min(1).optional(),
+  GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
+  LEAD_FINDER_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
+  LEAD_FINDER_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  LEAD_EMAIL_AI_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('medium'),
+
+  // Gmail OAuth (draft creation only, see backend/src/leadFinder/gmail/).
+  // GOOGLE_REFRESH_TOKEN is obtained once via the GET /api/leads/gmail/
+  // auth-url -> oauth-callback flow and then copied into .env by hand —
+  // deliberately an env var, not a database row, per the project's
+  // existing "secrets live in environment variables" convention.
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_REDIRECT_URI: z.string().min(1).optional(),
+  GOOGLE_REFRESH_TOKEN: z.string().min(1).optional(),
+
+  // Admin Dashboard authentication (Phase 5 auth upgrade). Both optional:
+  // leave unset and no AdminUser is bootstrapped, so POST
+  // /api/auth/admin/login simply returns "invalid email or password" for
+  // everyone until an account exists (created via this bootstrap or
+  // directly in the database) — the server never fails to start over it.
+  // Consumed exactly once per matching email, see
+  // adminAuth.service.ts's bootstrapInitialAdminUser; the plaintext value
+  // is hashed immediately and never stored, logged, or returned by any
+  // endpoint. A minimum length is enforced the same way other
+  // security-relevant config is validated at startup (fail fast, not a
+  // silently-weak default).
+  ADMIN_EMAIL: z.string().email().optional(),
+  ADMIN_PASSWORD: z.string().min(12).optional(),
+
+  // How long an admin session cookie stays valid before requiring a
+  // fresh login. Default 12 hours, a reasonable single-shift window for
+  // an internal tool with no "remember me" concept yet.
+  ADMIN_SESSION_TTL_MS: z.coerce.number().int().positive().default(12 * 60 * 60 * 1000),
+
+  // Brute-force defense for POST /api/auth/admin/login, keyed by IP only
+  // (not by the submitted email — a per-account lockout would let an
+  // attacker lock out the real admin just by submitting wrong passwords
+  // for their address).
+  ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  ADMIN_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
 })
 
 function loadEnv() {

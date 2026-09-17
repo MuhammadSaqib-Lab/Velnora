@@ -7,6 +7,12 @@ export interface PageSeoConfig {
   description: string
   path: string
   keywords?: string[]
+  /** Defaults to "index, follow" in the Seo component. Override per page
+   * when needed (there is no longer a static <meta name="robots"> in
+   * index.html — Helmet is the single source of truth so a page-specific
+   * override, e.g. on a future thin/duplicate page, actually replaces
+   * the default instead of producing two conflicting robots tags). */
+  robots?: string
 }
 
 /**

@@ -1,8 +1,8 @@
 # Velnora
 
-Velnora is a premium AI-powered web development agency site. The frontend communicates web development, AI-powered solutions, SEO, UI/UX design, and business automation services, built as a fast, accessible, SEO-ready single-page marketing site, backed by a REST API for form intake and an AI Client Handling Agent (chat consultant).
+Velnora is a premium AI-powered web development agency site. The frontend communicates web development, AI-powered solutions, SEO, UI/UX design, and business automation services, built as a fast, accessible, SEO-ready single-page marketing site, backed by a REST API for form intake, an AI Client Handling Agent (chat consultant), and an AI Lead Finder Agent (outbound research + Gmail drafts, human-reviewed).
 
-**Phase 2 (frontend + backend/database/API) is done, and the AI Client Handling Agent is now built.** Still no authentication, admin dashboard, lead-finder agent, or payments, see [CLAUDE.md](CLAUDE.md) for the full phase breakdown.
+**Phase 2 (frontend + backend/database/API) is done, the AI Client Handling Agent and the AI Lead Finder Agent are built, and an internal Admin Dashboard now ties both together.** Still no real multi-user authentication or payments, see [CLAUDE.md](CLAUDE.md) for the full phase breakdown.
 
 ## Stack
 
@@ -20,7 +20,8 @@ Velnora is a premium AI-powered web development agency site. The frontend commun
 - **PostgreSQL + Prisma**
 - **Zod** for server-side validation
 - **Helmet, cors, express-rate-limit** for the API security baseline
-- **`@anthropic-ai/sdk`** powering the AI Client Handling Agent, behind a provider-agnostic interface (`backend/src/ai/`)
+- **`@anthropic-ai/sdk`** powering the AI Client Handling Agent and the Lead Finder's email generation, behind a provider-agnostic interface (`backend/src/ai/`)
+- **`googleapis`** for Gmail draft creation, **`cheerio`** for website analysis (`backend/src/leadFinder/`)
 
 ## Getting Started
 
@@ -36,7 +37,7 @@ cd backend
 npm install
 cp .env.example .env      # fill in a real DATABASE_URL, see backend/README.md
 npm run prisma:generate
-npm run prisma:migrate
+npm run prisma:deploy     # applies the already-generated migration
 npm run dev                # http://localhost:4000
 ```
 
@@ -63,11 +64,15 @@ src/                        (frontend)
   hooks/        useCanRender3D (WebGL/power capability gate)
   lib/          utils (cn), SEO metadata, api.ts (backend client), form validation
   pages/        Home
+  pages/internal/          Lead Finder test interface (not linked publicly, noindex, lazy-loaded)
+  pages/internal/admin/    Admin Dashboard — overview, client leads, lead finder leads, detail pages
+  components/internal/     AdminTokenGate, StatCard, StatusBadge, Pagination, loading/empty/error states
   sections/     One component per landing-page section
 
 backend/                     (API, see backend/README.md)
   src/          config, controllers, routes, services, middleware, validators
   src/ai/       AI Client Handling Agent — providers, prompts, knowledge, tools
+  src/leadFinder/  AI Lead Finder Agent — search, analysis, scoring, email, Gmail
   prisma/       schema.prisma, seed data
   tests/        Vitest + Supertest suite
 ```
@@ -79,6 +84,10 @@ The Contact section (`src/sections/Contact.tsx`) posts to the backend's `POST /a
 The floating chat widget (`src/components/chat/FloatingChatWidget.tsx`) is a real AI consultant, not a stub — it talks to `POST /api/ai/chat` and can qualify a visitor and save their details as a lead for the team. See `backend/README.md`'s "AI Client Handling Agent" section for the full architecture, and [SECURITY.md](SECURITY.md) for its prompt-injection and abuse-protection design.
 
 The Free Audit form remains frontend-only for this phase (no backend endpoint exists for it yet), this is intentional scope, not an oversight, see `backend/README.md`'s "What's deliberately NOT built here".
+
+The AI Lead Finder Agent is a separate, internal-only feature — it researches businesses that may need Velnora's services and drafts (never sends) a personalized outreach email to Gmail for human review. It's reachable at `/internal/lead-finder` (a minimal, lazy-loaded testing interface, not linked from the public site, excluded from `robots.txt`, and marked `noindex`), gated by the same shared admin token the backend's `/api/leads/*` routes require. See `backend/README.md`'s "AI Lead Finder Agent" section for the full architecture and the one-time Gmail OAuth setup.
+
+The **Admin Dashboard** (`/internal/admin`, login at `/admin/login`) is the internal, protected home for managing both AI agents' leads in one place: real-time overview stats, Client Handling Agent leads (status, qualification, conversation review), and Lead Finder leads (research findings, scoring breakdown, outreach email review, Gmail draft creation) with server-side search/filter/sort/pagination. It's gated by a real email+password login with server-side sessions (`AdminUser`/`AdminSession`, an `httpOnly` cookie, bcrypt-hashed passwords) — not the shared token `/internal/lead-finder` still uses. Both `/admin/` and `/internal/` are `noindex`/excluded from `robots.txt`, and everything is lazy-loaded so it adds nothing to the public site's bundle. It never sends email automatically, drafting into Gmail always requires an explicit human click, and review/send always happens in Gmail itself. See `backend/README.md`'s "Admin Dashboard" and "Admin Dashboard authentication" sections for the full architecture, and [SECURITY.md](SECURITY.md)'s "Admin Dashboard security" section for its threat model.
 
 ## SEO
 
@@ -94,6 +103,8 @@ The architecture is ready for future SEO expansion (dedicated `/services/*`, `/i
 - Provision a real production PostgreSQL database and set a strong, unique `DATABASE_URL` (never reuse the local dev password)
 - Set `NODE_ENV=production` and a real `FRONTEND_URL` (no wildcard, no localhost) for the backend in production
 - Set a real `ANTHROPIC_API_KEY` in the backend's production environment for the AI Consultant to actually respond (it degrades to a friendly "not configured" message without one, the rest of the site still works)
+- Set a real, strong `LEAD_FINDER_ADMIN_TOKEN` (still used by the standalone `/internal/lead-finder` page), and optionally `GOOGLE_PLACES_API_KEY` and the Gmail OAuth variables, for the Lead Finder to be usable in production — see `backend/README.md`'s "AI Lead Finder Agent" section for the one-time Gmail setup flow
+- Set `ADMIN_EMAIL`/`ADMIN_PASSWORD` once to bootstrap the first Admin Dashboard login account (a strong, unique password, not reused from anywhere else), then remove them from the production environment afterward, they're not needed again unless recreating that account — see `backend/README.md`'s "Admin Dashboard authentication" section
 - See `backend/README.md`'s "What's deliberately NOT built here" and [SECURITY.md](SECURITY.md)'s "Future backend security requirements" for what's still needed before this handles real user data at scale (auth, CSRF, file upload validation, etc.)
 
 ## Deployment

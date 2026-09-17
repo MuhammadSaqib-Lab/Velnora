@@ -23,13 +23,13 @@ describe('GET /api/health', () => {
     expect(res.body).toMatchObject({ success: true, data: { databaseConnected: true } })
   })
 
-  it('reports aiConfigured: false when ANTHROPIC_API_KEY is unset (the test default)', async () => {
+  it('reports aiConfigured/leadSearchConfigured/gmailConfigured: false when their env vars are unset (the test default)', async () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([{ '?column?': 1 }])
 
     const app = createApp()
     const res = await request(app).get('/api/health')
 
-    expect(res.body.data).toMatchObject({ aiConfigured: false })
+    expect(res.body.data).toMatchObject({ aiConfigured: false, leadSearchConfigured: false, gmailConfigured: false })
   })
 
   it('returns 503 and databaseConnected: false when the database is unreachable', async () => {

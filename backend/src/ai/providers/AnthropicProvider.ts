@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { env } from '../../config/env.js'
-import type { AIContentBlock, AIGenerateResult, AIMessage, AIProvider, AIToolDefinition } from './types.js'
+import type { AIContentBlock, AIEffort, AIGenerateResult, AIMessage, AIProvider, AIToolDefinition } from './types.js'
 
 /**
  * The only file in this codebase that imports the Anthropic SDK directly.
@@ -71,6 +71,8 @@ export class AnthropicProvider implements AIProvider {
     system: string
     messages: AIMessage[]
     tools?: AIToolDefinition[]
+    effort?: AIEffort
+    maxTokens?: number
   }): Promise<AIGenerateResult> {
     if (!client) {
       throw new Error('ANTHROPIC_API_KEY is not configured')
@@ -78,14 +80,15 @@ export class AnthropicProvider implements AIProvider {
 
     const response = await client.messages.create({
       model: env.AI_MODEL,
-      max_tokens: env.AI_MAX_TOKENS,
+      max_tokens: params.maxTokens ?? env.AI_MAX_TOKENS,
       system: params.system,
       messages: toAnthropicMessages(params.messages),
-      // Adaptive thinking is Claude Opus 5's default; low effort is the
-      // right tradeoff for a concise, latency-sensitive chat reply
-      // rather than a reasoning-heavy task.
+      // Adaptive thinking is Claude Opus 5's default; effort defaults to
+      // the chat agent's AI_EFFORT (low, right for a concise chat reply)
+      // but callers with a different cost/quality tradeoff — e.g. the
+      // Lead Finder's email generation — can pass their own.
       thinking: { type: 'adaptive' },
-      output_config: { effort: env.AI_EFFORT },
+      output_config: { effort: params.effort ?? env.AI_EFFORT },
       ...(params.tools && params.tools.length > 0 ? { tools: toAnthropicTools(params.tools) } : {}),
     })
 
