@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
 import { Footer } from '@/components/layout/Footer'
 import { Navbar } from '@/components/layout/Navbar'
@@ -48,45 +49,47 @@ function PublicChrome({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <HelmetProvider>
-      <BrowserRouter>
-        <div className="noise-overlay" aria-hidden="true" />
-        <PublicChrome>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route
-              path="/admin/login"
-              element={
-                <Suspense fallback={null}>
-                  <AdminLogin />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/internal/lead-finder"
-              element={
-                <Suspense fallback={null}>
-                  <LeadFinder />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/internal/admin"
-              element={
-                <Suspense fallback={null}>
-                  <AdminShell />
-                </Suspense>
-              }
-            >
-              <Route index element={<Overview />} />
-              <Route path="client-leads" element={<ClientLeads />} />
-              <Route path="client-leads/:id" element={<ClientLeadDetail />} />
-              <Route path="lead-finder" element={<LeadFinderLeads />} />
-              <Route path="lead-finder/:id" element={<LeadFinderLeadDetail />} />
-            </Route>
-          </Routes>
-        </PublicChrome>
-      </BrowserRouter>
-    </HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <BrowserRouter>
+          <div className="noise-overlay" aria-hidden="true" />
+          <PublicChrome>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route
+                path="/admin/login"
+                element={
+                  <Suspense fallback={null}>
+                    <AdminLogin />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/internal/lead-finder"
+                element={
+                  <Suspense fallback={null}>
+                    <LeadFinder />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/internal/admin"
+                element={
+                  <Suspense fallback={null}>
+                    <AdminShell />
+                  </Suspense>
+                }
+              >
+                <Route index element={<Overview />} />
+                <Route path="client-leads" element={<ClientLeads />} />
+                <Route path="client-leads/:id" element={<ClientLeadDetail />} />
+                <Route path="lead-finder" element={<LeadFinderLeads />} />
+                <Route path="lead-finder/:id" element={<LeadFinderLeadDetail />} />
+              </Route>
+            </Routes>
+          </PublicChrome>
+        </BrowserRouter>
+      </HelmetProvider>
+    </ErrorBoundary>
   )
 }
