@@ -5,7 +5,25 @@
  * handler stays focused on its own fields.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
+/**
+ * Normalizes VITE_API_URL so a deployment env var pointing at the bare
+ * backend origin (e.g. "https://velnora-41qv.onrender.com", missing the
+ * "/api" prefix every backend route actually lives under — see
+ * backend/src/app.ts's `app.use('/api', apiRouter)`) still works,
+ * instead of silently producing a 404 on every single request. This is
+ * a real deployment failure this project hit once already: the fallback
+ * below already had "/api", but a misconfigured VITE_API_URL without it
+ * did not.
+ */
+function resolveApiBaseUrl(): string {
+  const configured = import.meta.env.VITE_API_URL
+  if (!configured) return 'http://localhost:4000/api'
+
+  const trimmed = configured.replace(/\/+$/, '')
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+}
+
+const API_BASE_URL = resolveApiBaseUrl()
 
 export interface ApiSuccess<T = unknown> {
   success: true
