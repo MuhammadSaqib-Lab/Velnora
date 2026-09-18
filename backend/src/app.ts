@@ -10,10 +10,23 @@ import type { ApiError } from './types/api.js'
 export function createApp() {
   const app = express()
 
-  // Not serving HTML from this API, and requests never go through a
-  // proxy chain we control here, so this is safe to leave at its
-  // secure default (don't trust X-Forwarded-* headers unless a real
-  // reverse proxy setup requires it later).
+  // Render (and most PaaS hosts) puts exactly one reverse proxy in front
+  // of this app, which sets X-Forwarded-For/X-Forwarded-Proto on every
+  // request. `1` means "trust exactly one hop" — req.ip and
+  // express-rate-limit's default IP-based keying then read the real
+  // client IP from that header instead of the proxy's own address,
+  // which is also otherwise a proxy IP shared by every visitor (every
+  // rate limit would count as one caller). Deliberately not `true`
+  // (trust the whole chain): with a single known proxy hop, only the
+  // last entry in X-Forwarded-For is trustworthy, a client could still
+  // forge earlier entries. express-rate-limit itself refuses to start
+  // and throws a ValidationError if it sees X-Forwarded-For with trust
+  // proxy left at its default `false` — this exact error is what
+  // surfaced it.
+  app.set('trust proxy', 1)
+
+  // Not serving HTML from this API, so this is safe to leave at its
+  // secure default.
   app.disable('x-powered-by')
 
   app.use(helmet())
