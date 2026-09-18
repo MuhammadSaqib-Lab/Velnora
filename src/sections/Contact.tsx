@@ -235,28 +235,17 @@ export function Contact() {
                 </div>
               </Field>
 
-              <Field label="Budget range" htmlFor="budget" optional>
-                <div className="relative">
-                  <select
-                    id="budget"
-                    name="budget"
-                    value={form.budget}
-                    onChange={(e) => updateField('budget', e.target.value)}
-                    className={selectFieldClass}
-                  >
-                    <option value="">Select a range</option>
-                    <option value="under-500">Under $500 (quick fixes)</option>
-                    <option value="500-1k">$500 to $1,000 (landing pages)</option>
-                    <option value="1k-2.5k">$1,000 to $2,500 (full websites)</option>
-                    <option value="2.5k-plus">$2,500+ (custom builds)</option>
-                    <option value="not-sure">Not sure yet</option>
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-muted)]"
-                    strokeWidth={1.75}
-                    aria-hidden="true"
-                  />
-                </div>
+              <Field label="What's your budget?" htmlFor="budget" optional error={errors.budget}>
+                <input
+                  id="budget"
+                  name="budget"
+                  type="text"
+                  maxLength={MAX_LENGTHS.budget}
+                  value={form.budget}
+                  onChange={(e) => updateField('budget', e.target.value)}
+                  className={fieldInputClass}
+                  placeholder={'e.g. $1,500, or "Let\'s discuss"'}
+                />
               </Field>
 
               <div className="sm:col-span-2 rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02] p-6">

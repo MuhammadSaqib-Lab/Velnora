@@ -103,3 +103,21 @@ export async function apiPatch<T = unknown>(
 
   return parseApiResult<T>(response)
 }
+
+/**
+ * Used only by internal admin pages — no public form needs DELETE today.
+ */
+export async function apiDelete<T = unknown>(path: string, headers?: Record<string, string>): Promise<ApiResult<T>> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers,
+    })
+  } catch {
+    throw new ApiNetworkError()
+  }
+
+  return parseApiResult<T>(response)
+}

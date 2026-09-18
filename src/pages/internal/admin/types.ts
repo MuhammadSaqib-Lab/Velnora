@@ -90,6 +90,26 @@ export interface PagedResult<T> {
   pageSize: number
 }
 
+/** Mirrors backend/prisma/schema.prisma's Review model, admin-facing
+ * shape (includes `email`, unlike the public PublicReview in src/lib/reviews.ts). */
+export interface AdminReview {
+  id: string
+  name: string
+  email?: string | null
+  rating: number
+  reviewText: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PagedReviews {
+  reviews: AdminReview[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 export interface AdminOverview {
   totalLeads: number
   leadFinder: {

@@ -182,13 +182,13 @@ All responses are JSON in the shape:
   company?: string       // max 150 chars
   phone?: string          // max 30 chars, digits/spaces/+()-. only
   projectType?: 'new-website' | 'redesign' | 'ai-solution' | 'seo' | 'other'
-  budgetRange?: 'under-500' | '500-1k' | '1k-2.5k' | '2.5k-plus' | 'not-sure'
+  budgetRange?: string    // free text, max 100 chars — e.g. "$1,500" or "Let's discuss", not a fixed dropdown
   message: string        // required, 10-2000 chars
   repoLink?: string       // project-inquiry only, must be http(s), max 500 chars
 }
 ```
 
-`projectType`/`budgetRange` values must exactly match the frontend's `<select>` options (`src/sections/Contact.tsx`) and the shared constants in `src/validators/shared.ts`, if the frontend's options ever change, update both.
+`projectType` values must exactly match the frontend's `<select>` options (`src/sections/Contact.tsx`) and the shared constants in `src/validators/shared.ts`, if the frontend's options ever change, update both. `budgetRange` used to be a matching fixed dropdown too, it's now an open-ended free-text field on both ends (a new agency presenting fixed pricing tiers before a conversation even starts was scaring off potential clients) — only its length is validated, see `shared.ts`'s `optionalBudgetSchema`.
 
 ### What's deliberately NOT built here
 

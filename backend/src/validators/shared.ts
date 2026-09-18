@@ -7,7 +7,6 @@ import { z } from 'zod'
  * deployable service; duplication here is deliberate, not an oversight.
  */
 export const PROJECT_TYPES = ['new-website', 'redesign', 'ai-solution', 'seo', 'other'] as const
-export const BUDGET_RANGES = ['under-500', '500-1k', '1k-2.5k', '2.5k-plus', 'not-sure'] as const
 
 const MAX_LENGTHS = {
   name: 100,
@@ -16,6 +15,9 @@ const MAX_LENGTHS = {
   phone: 30,
   message: 2000,
   url: 500,
+  /** Free-text budget note (e.g. "$1,500" or "Let's discuss") — deliberately
+   * short, this is a rough figure or a phrase, never a paragraph. */
+  budget: 100,
 } as const
 
 const ALLOWED_URL_PROTOCOLS = new Set(['http:', 'https:'])
@@ -69,7 +71,17 @@ export const optionalPhoneSchema = z.preprocess(
 
 export const optionalProjectTypeSchema = z.preprocess(emptyToUndefined, z.enum(PROJECT_TYPES).optional())
 
-export const optionalBudgetRangeSchema = z.preprocess(emptyToUndefined, z.enum(BUDGET_RANGES).optional())
+/**
+ * Free text, not a fixed enum — the budget field used to be a preset
+ * dropdown (under-500/500-1k/1k-2.5k/2.5k-plus/not-sure), deliberately
+ * replaced with an open-ended field so a new agency isn't presenting
+ * fixed pricing tiers before a conversation even starts. A client can
+ * type a rough figure or "Let's discuss"; only length is bounded.
+ */
+export const optionalBudgetSchema = z.preprocess(
+  emptyToUndefined,
+  z.string().trim().max(MAX_LENGTHS.budget, `Keep this under ${MAX_LENGTHS.budget} characters`).optional(),
+)
 
 export const optionalRepoLinkSchema = z.preprocess(
   emptyToUndefined,

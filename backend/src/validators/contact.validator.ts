@@ -3,7 +3,7 @@ import {
   emailSchema,
   messageSchema,
   nameSchema,
-  optionalBudgetRangeSchema,
+  optionalBudgetSchema,
   optionalCompanySchema,
   optionalPhoneSchema,
   optionalProjectTypeSchema,
@@ -16,7 +16,7 @@ export const contactSchema = z
     company: optionalCompanySchema,
     phone: optionalPhoneSchema,
     projectType: optionalProjectTypeSchema,
-    budgetRange: optionalBudgetRangeSchema,
+    budgetRange: optionalBudgetSchema,
     message: messageSchema,
   })
   .strict()

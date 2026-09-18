@@ -6,11 +6,13 @@ import {
   getClientLeads,
   patchClientLeadStatus,
 } from '../controllers/adminClientLeads.controller.js'
+import { deleteReviewById, getAdminReviews, patchReviewStatus } from '../controllers/adminReviews.controller.js'
 import { requireAdminSession } from '../middleware/requireAdminSession.js'
 import { validateBody } from '../middleware/validateBody.js'
 import { validateQuery } from '../middleware/validateQuery.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { clientLeadListQuerySchema, clientLeadStatusUpdateSchema } from '../validators/adminClientLeads.validator.js'
+import { adminReviewListQuerySchema, reviewStatusUpdateSchema } from '../validators/review.validator.js'
 
 /**
  * Phase 5: Admin Dashboard. Gated by requireAdminSession() — a real,
@@ -44,3 +46,7 @@ adminRouter.patch(
   validateBody(clientLeadStatusUpdateSchema),
   asyncHandler(patchClientLeadStatus),
 )
+
+adminRouter.get('/reviews', validateQuery(adminReviewListQuerySchema), asyncHandler(getAdminReviews))
+adminRouter.patch('/reviews/:id/status', validateBody(reviewStatusUpdateSchema), asyncHandler(patchReviewStatus))
+adminRouter.delete('/reviews/:id', asyncHandler(deleteReviewById))

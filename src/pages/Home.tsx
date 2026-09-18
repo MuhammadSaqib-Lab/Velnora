@@ -8,6 +8,7 @@ import { FreeAudit } from '@/sections/FreeAudit'
 import { Hero } from '@/sections/Hero'
 import { LogoStrip } from '@/sections/LogoStrip'
 import { Process } from '@/sections/Process'
+import { Reviews } from '@/sections/Reviews'
 import { SEOSection } from '@/sections/SEOSection'
 import { Services } from '@/sections/Services'
 import { TechCapabilities } from '@/sections/TechCapabilities'
@@ -32,6 +33,7 @@ export function Home() {
       <Work />
       <About />
       <WhyChooseUs />
+      <Reviews />
       <CTASection />
       <FAQ />
       <CostEstimator />

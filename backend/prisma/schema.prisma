@@ -1,14 +1,16 @@
 // Velnora backend database schema.
 //
 // Design notes:
-// - `projectType` / `budgetRange` are plain strings, not Prisma enums. The
-//   underlying value set (e.g. "1k-2.5k", "not-sure") is UI copy owned by
-//   the frontend (src/sections/Contact.tsx) and has already changed once
-//   during this project. Making it a DB enum would require a migration
-//   every time marketing tweaks a pricing tier label. Strict validation of
-//   the allowed values happens at the API boundary (Zod, see
-//   src/validators), which is the right layer for values that are really
-//   "content" rather than fixed domain data.
+// - `projectType` / `budgetRange` are plain strings, not Prisma enums.
+//   `projectType` is a fixed dropdown (UI copy owned by the frontend,
+//   src/sections/Contact.tsx, validated against an enum at the API
+//   boundary — see src/validators). `budgetRange` was a fixed dropdown too
+//   until it was deliberately replaced with an open-ended free-text field
+//   (a new agency showing preset pricing tiers before a conversation even
+//   starts was scaring off potential clients) — it only has a length cap
+//   now (see shared.ts's optionalBudgetSchema), never a fixed value set.
+//   Both stay plain strings either way: a DB enum would need a migration
+//   every time this "content" changes, and that's the wrong layer for it.
 // - `SubmissionStatus` (internal triage state) and `LeadStatus` (a
 //   different lifecycle for the future lead-finder feature) ARE enums,
 //   because those values are genuinely fixed and owned by us, not by
@@ -108,6 +110,12 @@ enum LeadIntent {
   LOW
   MEDIUM
   HIGH
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 /// Prepared for Phase 3 (authentication). Not used by any endpoint yet.
@@ -311,4 +319,27 @@ model QualifiedLead {
   @@index([status])
   @@index([createdAt])
   @@map("qualified_leads")
+}
+
+/// Public-facing client reviews (the "What Our Clients Say" section).
+/// `email` is optional per the submission form — kept for admin follow-up
+/// only, never displayed publicly. A review is never shown on the public
+/// site until an admin sets it to APPROVED (see review.service.ts);
+/// `rating` (1-5) is validated at the API boundary (Zod), not a DB CHECK
+/// constraint, matching this project's existing convention of keeping
+/// domain-value validation in the Zod layer rather than the schema.
+model Review {
+  id         String       @id @default(cuid())
+  name       String
+  email      String?
+  rating     Int
+  reviewText String
+  status     ReviewStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([status])
+  @@index([status, createdAt])
+  @@index([rating])
+  @@map("reviews")
 }

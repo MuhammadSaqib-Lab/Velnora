@@ -31,6 +31,7 @@ const LeadFinderLeads = lazy(() =>
 const LeadFinderLeadDetail = lazy(() =>
   import('@/pages/internal/admin/LeadFinderLeadDetail').then((m) => ({ default: m.LeadFinderLeadDetail })),
 )
+const AdminReviews = lazy(() => import('@/pages/internal/admin/Reviews').then((m) => ({ default: m.Reviews })))
 
 function PublicChrome({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
@@ -86,6 +87,7 @@ export default function App() {
                 <Route path="client-leads/:id" element={<ClientLeadDetail />} />
                 <Route path="lead-finder" element={<LeadFinderLeads />} />
                 <Route path="lead-finder/:id" element={<LeadFinderLeadDetail />} />
+                <Route path="reviews" element={<AdminReviews />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

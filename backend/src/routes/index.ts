@@ -7,6 +7,7 @@ import { projectsRouter, servicesRouter } from './content.routes.js'
 import { healthRouter } from './health.routes.js'
 import { leadsRouter } from './leads.routes.js'
 import { projectInquiryRouter } from './projectInquiry.routes.js'
+import { reviewsRouter } from './reviews.routes.js'
 
 export const apiRouter = Router()
 
@@ -17,5 +18,6 @@ apiRouter.use('/services', servicesRouter)
 apiRouter.use('/projects', projectsRouter)
 apiRouter.use('/ai', aiChatRouter)
 apiRouter.use('/leads', leadsRouter)
+apiRouter.use('/reviews', reviewsRouter)
 apiRouter.use('/auth/admin', adminAuthRouter)
 apiRouter.use('/admin', adminRouter)

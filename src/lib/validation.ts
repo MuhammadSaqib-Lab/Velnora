@@ -17,7 +17,11 @@ export const MAX_LENGTHS = {
   message: 2000,
   url: 500,
   chatMessage: 2000, // must match backend/src/validators/aiChat.validator.ts
+  reviewText: 2000, // must match backend/src/validators/review.validator.ts
+  budget: 100, // free-text budget note, must match backend/src/validators/shared.ts's optionalBudgetSchema
 } as const
+
+export const MIN_REVIEW_LENGTH = 10 // must match backend/src/validators/review.validator.ts
 
 const ALLOWED_URL_PROTOCOLS = new Set(['http:', 'https:'])
 

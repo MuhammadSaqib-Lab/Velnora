@@ -40,6 +40,10 @@ export function validateContactForm(data: ContactFormData): ContactFormErrors {
     errors.phone = `Keep your phone number under ${MAX_LENGTHS.phone} characters.`
   }
 
+  if (data.budget.trim().length > MAX_LENGTHS.budget) {
+    errors.budget = `Keep this under ${MAX_LENGTHS.budget} characters.`
+  }
+
   const message = data.message.trim()
   if (!message) {
     errors.message = 'Tell us a little about your project.'

@@ -41,11 +41,26 @@ describe('POST /api/project-inquiry', () => {
     expect(prisma.projectInquiry.create).toHaveBeenCalledTimes(1)
   })
 
-  it('rejects an unknown budgetRange value with 400', async () => {
+  it('accepts a free-text budgetRange value — the field is open-ended, not a fixed enum', async () => {
+    vi.mocked(prisma.projectInquiry.create).mockResolvedValueOnce({
+      id: 'p2',
+      createdAt: new Date(),
+    } as never)
+
     const app = createApp()
     const res = await request(app)
       .post('/api/project-inquiry')
-      .send({ ...validPayload, budgetRange: '$1,000,000' })
+      .send({ ...validPayload, budgetRange: "Let's discuss" })
+
+    expect(res.status).toBe(201)
+    expect(prisma.projectInquiry.create).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a budgetRange value over the max length with 400', async () => {
+    const app = createApp()
+    const res = await request(app)
+      .post('/api/project-inquiry')
+      .send({ ...validPayload, budgetRange: 'a'.repeat(101) })
 
     expect(res.status).toBe(400)
     expect(res.body.errors).toHaveProperty('budgetRange')

@@ -1,12 +1,11 @@
 import { ArrowRight } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { GlassPanel } from '@/components/ui/GlassPanel'
 import { Reveal } from '@/components/ui/Reveal'
 import { SectionHeading } from '@/components/ui/SectionHeading'
 import {
   designOptions,
-  getBudgetTier,
   projectTypeOptions,
   speedOptions,
   toContactProjectType,
@@ -55,22 +54,18 @@ export function CostEstimator() {
   const [design, setDesign] = useState<DesignValue>('custom')
   const [speed, setSpeed] = useState<SpeedValue>('standard')
 
-  const tier = useMemo(() => {
-    const projectMod = projectTypeOptions.find((o) => o.value === projectType)!.modifier
-    const designMod = designOptions.find((o) => o.value === design)!.modifier
-    const speedMod = speedOptions.find((o) => o.value === speed)!.modifier
-    return getBudgetTier(projectMod + designMod + speedMod)
-  }, [projectType, design, speed])
-
   function handleRequestEstimate() {
     const projectLabel = projectTypeOptions.find((o) => o.value === projectType)!.label
     const designLabel = designOptions.find((o) => o.value === design)!.label
     const speedLabel = speedOptions.find((o) => o.value === speed)!.label
 
+    // No price is ever computed or passed along here — the client's own
+    // Contact form budget field (now free text) is where they say what
+    // they're comfortable with, not something this estimator states for them.
     requestEstimateHandoff({
       projectType: toContactProjectType(projectType),
-      budget: tier.value,
-      message: `Cost estimate request: ${projectLabel}, ${designLabel.toLowerCase()}, ${speedLabel.toLowerCase()}. Estimated budget: ${tier.range}.`,
+      budget: '',
+      message: `Cost estimate request: ${projectLabel}, ${designLabel.toLowerCase()}, ${speedLabel.toLowerCase()}.`,
     })
   }
 
@@ -132,17 +127,7 @@ export function CostEstimator() {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-col items-center justify-between gap-6 border-t border-white/[0.08] pt-8 sm:flex-row">
-              <div className="text-center sm:text-left">
-                <p className="text-xs uppercase tracking-[0.1em] text-[var(--color-ink-faint)]">
-                  Estimated budget
-                </p>
-                <p className="mt-1 text-3xl font-semibold text-[var(--color-accent-soft)]">
-                  {tier.range}
-                </p>
-                <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{tier.description}</p>
-              </div>
-
+            <div className="mt-8 flex justify-center border-t border-white/[0.08] pt-8">
               <Button href="#contact" size="lg" onClick={handleRequestEstimate}>
                 Request this estimate
                 <ArrowRight className="h-4 w-4" strokeWidth={2} />
