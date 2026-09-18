@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
 import { Footer } from '@/components/layout/Footer'
@@ -58,6 +58,7 @@ export default function App() {
           <PublicChrome>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
               <Route
                 path="/admin/login"
                 element={

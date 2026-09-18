@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /internal/
+Disallow: /admin
 Disallow: /admin/
 
 Sitemap: https://www.velnora.com/sitemap.xml
