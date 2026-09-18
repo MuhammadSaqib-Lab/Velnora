@@ -79,7 +79,7 @@ script-src 'self' 'sha256-AMF9NWirfteRBbBSJP8/7HbFqu7GbL51JVCdkQkyBN0=';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: https://cdn.simpleicons.org https://picsum.photos;
 font-src 'self';
-connect-src 'self' https://api.velnora.com;
+connect-src 'self' https://velnora-41qv.onrender.com;
 worker-src 'self' blob:;
 object-src 'none';
 base-uri 'self';
@@ -96,7 +96,7 @@ Notes on the choices that aren't obvious:
   ```
   If you forget, the structured data silently stops rendering in browsers that enforce the CSP, it fails closed, not open, so this is a correctness bug to catch in review, not a security hole.
 - **`style-src` needs `'unsafe-inline'`.** Two components (`BrandMark.tsx`'s spinning ring, `SceneFallback.tsx`'s computed badge positions) use React's `style={{...}}` with runtime-computed values. These can't be hashed (the values differ per render) and can't use a nonce on a static site (nonces require per-request server generation). This is a low-risk accommodation: neither style is ever derived from user input, both are computed from hardcoded constants or a fixed data array, so there is no injection path an attacker could use even with `'unsafe-inline'` in play.
-- **`connect-src` now also allows `https://api.velnora.com`.** As of Phase 2 the frontend calls a separately-hosted backend API (`src/lib/api.ts`, via `VITE_API_URL`), a bare `connect-src 'self'` would silently block every `fetch()` to that origin once deployed (the browser's CSP layer, not the app, would drop the request). `https://api.velnora.com` is a **placeholder** consistent with this project's placeholder domain convention, replace it with the real production backend origin before going live, and keep it as an exact origin, never a wildcard.
+- **`connect-src` now also allows `https://velnora-41qv.onrender.com`.** As of Phase 2 the frontend calls a separately-hosted backend API (`src/lib/api.ts`, via `VITE_API_URL`), a bare `connect-src 'self'` would silently block every `fetch()` to that origin once deployed (the browser's CSP layer, not the app, would drop the request). This used to be the placeholder `https://api.velnora.com`; it was updated to the real deployed Render backend origin after that exact placeholder-vs-real mismatch caused every Admin Dashboard login attempt on the live site to fail with a generic "could not reach the server" error. If the backend ever moves host/domain, this needs updating again, kept as an exact origin, never a wildcard.
 - **`frame-ancestors 'none'`** blocks this site from being embedded in an iframe anywhere, full clickjacking protection. `X-Frame-Options: DENY` is included alongside it for older browsers that don't read `frame-ancestors`.
 - **`upgrade-insecure-requests`** is a safety net; every resource this site loads is already HTTPS (verified against the built bundle, see Third-party resources above).
 
