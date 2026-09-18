@@ -65,12 +65,12 @@ export function WebDevelopment() {
               <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
             </div>
             <img
-              src="https://picsum.photos/seed/velnora-web-development/960/640"
-              alt="Preview of a website interface built by Velnora"
-              width={960}
-              height={640}
+              src="/work/grill-out-preview.jpg"
+              alt="Preview of a dark-themed restaurant website interface with vibrant orange accents"
+              width={1600}
+              height={785}
               loading="lazy"
-              className="aspect-[3/2] w-full rounded-[calc(var(--radius-panel)-8px)] object-cover"
+              className="aspect-[3/2] w-full rounded-[calc(var(--radius-panel)-8px)] object-cover shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]"
             />
           </div>
         </Reveal>
