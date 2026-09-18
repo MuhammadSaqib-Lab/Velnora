@@ -6,18 +6,26 @@
  */
 
 /**
- * Normalizes VITE_API_URL so a deployment env var pointing at the bare
- * backend origin (e.g. "https://velnora-41qv.onrender.com", missing the
- * "/api" prefix every backend route actually lives under — see
- * backend/src/app.ts's `app.use('/api', apiRouter)`) still works,
- * instead of silently producing a 404 on every single request. This is
- * a real deployment failure this project hit once already: the fallback
- * below already had "/api", but a misconfigured VITE_API_URL without it
- * did not.
+ * Defaults to a same-origin relative path, never an absolute
+ * cross-origin URL. Locally, vite.config.ts's dev-server proxy forwards
+ * "/api" to the local backend; in production, vercel.json's rewrite
+ * forwards it to the deployed Render backend. Either way the browser
+ * only ever sees one origin, which is what actually fixes the admin
+ * session cookie: a genuinely cross-site deployment (Vercel + Render
+ * are different registrable domains) hit both SameSite=Lax rejecting
+ * the cookie on cross-site fetches, and then, after switching to
+ * SameSite=None, third-party-cookie blocking (a separate browser
+ * privacy feature, e.g. Chrome's "Block third-party cookies", Safari's
+ * ITP) rejecting it anyway — no cookie attribute fixes a cookie that
+ * isn't first-party at all. Routing everything through one origin
+ * sidesteps the whole problem instead of chasing further exceptions to
+ * it. VITE_API_URL can still override this (e.g. pointing local dev at
+ * a remote staging backend directly), normalized to always end in
+ * "/api" if set.
  */
 function resolveApiBaseUrl(): string {
   const configured = import.meta.env.VITE_API_URL
-  if (!configured) return 'http://localhost:4000/api'
+  if (!configured) return '/api'
 
   const trimmed = configured.replace(/\/+$/, '')
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`

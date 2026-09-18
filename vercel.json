@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/api/:path*", "destination": "https://velnora-41qv.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/" }
   ],
   "headers": [
@@ -20,7 +21,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-AMF9NWirfteRBbBSJP8/7HbFqu7GbL51JVCdkQkyBN0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.simpleicons.org https://picsum.photos; font-src 'self'; connect-src 'self' https://velnora-41qv.onrender.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'sha256-AMF9NWirfteRBbBSJP8/7HbFqu7GbL51JVCdkQkyBN0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.simpleicons.org https://picsum.photos; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     }

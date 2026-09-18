@@ -39,40 +39,32 @@ function getDummyHash(): Promise<string> {
  *
  * - `httpOnly`: never readable from frontend JavaScript, the only way an
  *   XSS bug could steal it.
- * - `secure`: required in production (HTTPS-only), and mandatory
- *   whenever `sameSite: 'none'` is used (browsers refuse a non-secure
- *   `SameSite=None` cookie outright); relaxed in local dev since
- *   http://localhost has no TLS.
- * - `sameSite`: `'none'` in production, `'lax'` in development. This was
- *   originally `'lax'` everywhere on the assumption that the frontend and
- *   backend would be subdomains of one registrable domain in production
- *   (e.g. app.velnora.com / api.velnora.com) — genuinely same-site, where
- *   Lax is both sufficient and a real CSRF defense. The actual current
- *   deployment is Vercel (*.vercel.app) + Render (*.onrender.com), two
- *   completely different registrable domains — genuinely cross-site.
- *   Browsers never attach a `SameSite=Lax` cookie to a cross-site fetch
- *   at all, so with the original setting, login would succeed (the
- *   cookie gets set) but the very next request checking the session
- *   would silently look unauthenticated and bounce back to login — this
- *   exact bug was hit live. Local dev stays `'lax'`: `localhost:5173`
- *   and `localhost:4000` are different ports but the same *site*
- *   (browsers don't treat ports as a site boundary, and `localhost` has
- *   no registrable-domain suffix to differ on), so Lax already works
- *   there and needs no `Secure` requirement against plain http.
- *
- *   Losing Lax's ambient-credential CSRF defense in production is an
- *   acceptable trade: every state-changing admin route only accepts
- *   JSON bodies, which forces a CORS preflight, and this backend's CORS
- *   config (see app.ts) never allows a wildcard origin — a disallowed
- *   origin's preflight fails and the browser never sends the real
- *   request at all. See SECURITY.md's "Admin Dashboard security"
- *   section for the full reasoning.
+ * - `secure`: required in production (HTTPS-only); relaxed in local dev
+ *   since http://localhost has no TLS.
+ * - `sameSite: 'lax'`: this only stays correct because the frontend
+ *   proxies `/api/*` to this backend rather than calling it cross-origin
+ *   directly (see the root `vercel.json`'s rewrite and `vite.config.ts`'s
+ *   dev-server proxy for the local equivalent) — from the browser's
+ *   perspective every request targets the frontend's own origin, so this
+ *   is genuinely same-site regardless of where the backend actually
+ *   runs. This went through two broken iterations before landing here:
+ *   plain `'lax'` while the frontend called Render directly (a genuinely
+ *   cross-site request) meant browsers never attached the cookie to the
+ *   session-check call right after a successful login, silently bouncing
+ *   the admin back to the login page; switching to `'none'` fixed that
+ *   but then ran into third-party-cookie blocking (a separate browser
+ *   privacy feature — e.g. Chrome's "Block third-party cookies", Safari's
+ *   ITP — that rejects a cross-site cookie regardless of `SameSite`).
+ *   Routing every request through one origin via the proxy fixes the
+ *   root cause instead of chasing further cookie-attribute exceptions to
+ *   it, and restores `'lax'`'s ambient-credential CSRF protection as a
+ *   bonus. See SECURITY.md's "Admin Dashboard security" section.
  */
 export function adminSessionCookieOptions(expiresAt: Date) {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    sameSite: 'lax' as const,
     path: '/',
     expires: expiresAt,
   }
@@ -82,7 +74,7 @@ export function clearedAdminSessionCookieOptions() {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    sameSite: 'lax' as const,
     path: '/',
   }
 }
