@@ -9,8 +9,8 @@ export function Work() {
       <div className="container-app">
         <SectionHeading
           eyebrow="Selected Work"
-          heading="Concept work that shows how we build"
-          subtext="These are concept projects built to demonstrate range and technical approach while our public case-study library grows."
+          heading="Work that shows how we build"
+          subtext="A mix of real client work and concept projects built to demonstrate range and technical approach while our public case-study library grows — each one is labeled accordingly."
         />
 
         <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -23,11 +23,14 @@ export function Work() {
               <article className="group h-full overflow-hidden rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02] transition-colors duration-300 hover:border-[var(--color-accent)]/35">
                 <div className="relative overflow-hidden">
                   <span className="absolute left-4 top-4 z-10 rounded-full border border-white/15 bg-black/50 px-3 py-1 text-[11px] text-[var(--color-ink)] backdrop-blur">
-                    Concept project
+                    {project.isConcept ? 'Concept project' : 'Client project'}
                   </span>
                   <img
-                    src={`https://picsum.photos/seed/${project.imageSeed}/${i === 0 ? 1000 : 640}/${i === 0 ? 520 : 420}`}
-                    alt={`Concept website design for ${project.name}`}
+                    src={
+                      project.image ??
+                      `https://picsum.photos/seed/${project.imageSeed}/${i === 0 ? 1000 : 640}/${i === 0 ? 520 : 420}`
+                    }
+                    alt={project.isConcept ? `Concept website design for ${project.name}` : `Screenshot of the ${project.name} website`}
                     loading="lazy"
                     className={cn(
                       'w-full object-cover transition-transform duration-500 group-hover:scale-105',
