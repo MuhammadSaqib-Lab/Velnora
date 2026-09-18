@@ -1,0 +1,59 @@
+# Render Blueprint for the Velnora backend.
+#
+# This repo is a monorepo: the frontend lives at the repo root (a static
+# Vite build, not deployed here) and the actual Node API lives in
+# backend/. Render's own "missing start script" error almost always means
+# the service's Root Directory is pointed at the repo root instead of
+# backend/ — the root package.json is the frontend's and has no "start"
+# script at all (dev/build/lint/preview only), which is what throws that
+# exact error even though backend/package.json's "start" script is fine.
+#
+# IMPORTANT: applying this file does NOT retroactively reconfigure a
+# service you already created by hand in the Render dashboard — Render
+# only applies a Blueprint when a service is first created from one (New
+# + > Blueprint) or explicitly synced to it. If your service already
+# exists, open it in the Render dashboard > Settings and set:
+#   Root Directory: backend
+#   Build Command:  npm install && npm run build && npx prisma migrate deploy
+#   Start Command:  npm start
+# to match what's declared below, or delete and recreate it from this
+# Blueprint instead.
+services:
+  - type: web
+    name: velnora-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Everything below is a secret or environment-specific value —
+      # sync: false means "set this in the Render dashboard yourself,
+      # never commit a real value into this file." See backend/.env.example
+      # for what each one does; most are optional (the corresponding
+      # feature degrades to a clear "not configured" error without it,
+      # the server doesn't fail to start).
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: LEAD_FINDER_ADMIN_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
