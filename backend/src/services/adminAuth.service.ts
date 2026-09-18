@@ -39,21 +39,40 @@ function getDummyHash(): Promise<string> {
  *
  * - `httpOnly`: never readable from frontend JavaScript, the only way an
  *   XSS bug could steal it.
- * - `secure`: required in production (HTTPS-only); relaxed in local dev
- *   since http://localhost has no TLS.
- * - `sameSite: 'lax'`: this is a same-site architecture (frontend and
- *   backend are subdomains of one registrable domain in production, and
- *   ports of `localhost` — which browsers also treat as one site — in
- *   dev), so Lax is delivered on every request this SPA actually makes,
- *   while still refusing to attach the cookie to a genuinely cross-site
- *   request. That's also the actual CSRF defense for the state-changing
- *   admin routes, see SECURITY.md's "Admin Dashboard security" section.
+ * - `secure`: required in production (HTTPS-only), and mandatory
+ *   whenever `sameSite: 'none'` is used (browsers refuse a non-secure
+ *   `SameSite=None` cookie outright); relaxed in local dev since
+ *   http://localhost has no TLS.
+ * - `sameSite`: `'none'` in production, `'lax'` in development. This was
+ *   originally `'lax'` everywhere on the assumption that the frontend and
+ *   backend would be subdomains of one registrable domain in production
+ *   (e.g. app.velnora.com / api.velnora.com) — genuinely same-site, where
+ *   Lax is both sufficient and a real CSRF defense. The actual current
+ *   deployment is Vercel (*.vercel.app) + Render (*.onrender.com), two
+ *   completely different registrable domains — genuinely cross-site.
+ *   Browsers never attach a `SameSite=Lax` cookie to a cross-site fetch
+ *   at all, so with the original setting, login would succeed (the
+ *   cookie gets set) but the very next request checking the session
+ *   would silently look unauthenticated and bounce back to login — this
+ *   exact bug was hit live. Local dev stays `'lax'`: `localhost:5173`
+ *   and `localhost:4000` are different ports but the same *site*
+ *   (browsers don't treat ports as a site boundary, and `localhost` has
+ *   no registrable-domain suffix to differ on), so Lax already works
+ *   there and needs no `Secure` requirement against plain http.
+ *
+ *   Losing Lax's ambient-credential CSRF defense in production is an
+ *   acceptable trade: every state-changing admin route only accepts
+ *   JSON bodies, which forces a CORS preflight, and this backend's CORS
+ *   config (see app.ts) never allows a wildcard origin — a disallowed
+ *   origin's preflight fails and the browser never sends the real
+ *   request at all. See SECURITY.md's "Admin Dashboard security"
+ *   section for the full reasoning.
  */
 export function adminSessionCookieOptions(expiresAt: Date) {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax' as const,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
     expires: expiresAt,
   }
@@ -63,7 +82,7 @@ export function clearedAdminSessionCookieOptions() {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax' as const,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
   }
 }
