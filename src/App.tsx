@@ -6,6 +6,7 @@ import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
 import { Footer } from '@/components/layout/Footer'
 import { Navbar } from '@/components/layout/Navbar'
 import { Home } from '@/pages/Home'
+import { NotFound } from '@/pages/NotFound'
 
 // Lazy-loaded: these are internal-only interfaces (Phase 4's Lead Finder
 // test page, Phase 5's Admin Dashboard and its login page), not part of
@@ -86,6 +87,7 @@ export default function App() {
                 <Route path="lead-finder" element={<LeadFinderLeads />} />
                 <Route path="lead-finder/:id" element={<LeadFinderLeadDetail />} />
               </Route>
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </PublicChrome>
         </BrowserRouter>
