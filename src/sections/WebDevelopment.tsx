@@ -66,13 +66,18 @@ export function WebDevelopment() {
             </div>
             <picture>
               <source
+                type="image/avif"
+                srcSet="/work/grill-out-preview-480w.avif 480w, /work/grill-out-preview-640w.avif 640w, /work/grill-out-preview-960w.avif 960w, /work/grill-out-preview-1280w.avif 1280w"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+              />
+              <source
                 type="image/webp"
-                srcSet="/work/grill-out-preview-640w.webp 640w, /work/grill-out-preview-960w.webp 960w, /work/grill-out-preview-1280w.webp 1280w"
+                srcSet="/work/grill-out-preview-480w.webp 480w, /work/grill-out-preview-640w.webp 640w, /work/grill-out-preview-960w.webp 960w, /work/grill-out-preview-1280w.webp 1280w"
                 sizes="(min-width: 1024px) 50vw, 100vw"
               />
               <img
                 src="/work/grill-out-preview-1280w.jpg"
-                srcSet="/work/grill-out-preview-640w.jpg 640w, /work/grill-out-preview-960w.jpg 960w, /work/grill-out-preview-1280w.jpg 1280w"
+                srcSet="/work/grill-out-preview-480w.jpg 480w, /work/grill-out-preview-640w.jpg 640w, /work/grill-out-preview-960w.jpg 960w, /work/grill-out-preview-1280w.jpg 1280w"
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 alt="Preview of a dark-themed restaurant website interface with vibrant orange accents"
                 width={1600}

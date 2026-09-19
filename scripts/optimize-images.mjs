@@ -3,7 +3,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 
 const workDir = path.resolve(import.meta.dirname, '../public/work')
-const widths = [640, 960, 1280]
+const widths = [480, 640, 960, 1280]
 
 const images = ['aqsa-physiotherapy-centre.jpg', 'grill-out-preview.jpg']
 
@@ -17,6 +17,10 @@ for (const file of images) {
   for (const w of widths) {
     if (w > (meta.width ?? 0)) continue
 
+    const avifPath = path.join(workDir, `${base}-${w}w.avif`)
+    await sharp(inputBuffer).resize({ width: w }).avif({ quality: 60 }).toFile(avifPath)
+    const avifSize = fs.statSync(avifPath).size
+
     const webpPath = path.join(workDir, `${base}-${w}w.webp`)
     await sharp(inputBuffer).resize({ width: w }).webp({ quality: 75 }).toFile(webpPath)
     const webpSize = fs.statSync(webpPath).size
@@ -28,6 +32,6 @@ for (const file of images) {
       .toFile(jpgPath)
     const jpgSize = fs.statSync(jpgPath).size
 
-    console.log(`  ${w}w -> webp ${webpSize} bytes, jpg ${jpgSize} bytes`)
+    console.log(`  ${w}w -> avif ${avifSize} bytes, webp ${webpSize} bytes, jpg ${jpgSize} bytes`)
   }
 }
