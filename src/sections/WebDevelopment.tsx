@@ -70,7 +70,7 @@ export function WebDevelopment() {
               width={1600}
               height={785}
               loading="lazy"
-              className="aspect-[3/2] w-full rounded-[calc(var(--radius-panel)-8px)] object-cover shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]"
+              className="aspect-[1600/785] w-full rounded-[calc(var(--radius-panel)-8px)] object-cover shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]"
             />
           </div>
         </Reveal>
