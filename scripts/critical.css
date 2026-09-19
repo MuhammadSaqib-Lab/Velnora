@@ -1,9 +1,10 @@
 /*
  * Critical (above-the-fold) CSS for the homepage's initial viewport —
- * Navbar + Hero only. Inlined into index.html's <head> by
- * scripts/inline-critical-css.mjs so the browser doesn't need to wait for
- * the full stylesheet to render first paint; the full stylesheet still
- * loads (non-blocking, preload+swap) right after for everything else.
+ * Navbar (including the mobile menu it can open) + Hero. Inlined into
+ * index.html's <head> by scripts/inline-critical-css.mjs so the browser
+ * doesn't need to wait for the full stylesheet to render first paint;
+ * the full stylesheet still loads (non-blocking, preload+swap) right
+ * after for everything else.
  *
  * REGENERATE THIS FILE if Navbar.tsx, BrandMark.tsx, MobileMenu.tsx,
  * Button.tsx, Hero.tsx, HeroVisual.tsx, or SceneFallback.tsx change their
@@ -16,8 +17,8 @@
  * walks document.styleSheets (pick the sheet with a non-null .href — the
  * page also has the previously-inlined critical <style>, which has none),
  * recursing into @layer blocks. IMPORTANT gotchas learned the hard way —
- * two separate real bugs shipped and got caught in browser testing before
- * this was correct, both worth understanding before touching this again:
+ * THREE separate real bugs shipped and got caught testing before this
+ * was correct, all worth understanding before touching this again:
  *
  * 1. Use rule.constructor.name (e.g. 'CSSLayerBlockRule'), NOT the legacy
  *    numeric rule.type — modern Chromium reports .type as 0 for
@@ -39,37 +40,47 @@
  *    @media wrapper made lg:block / lg:hidden apply UNCONDITIONALLY at
  *    every viewport width, which broke the mobile/desktop nav toggle
  *    (nav links showed on mobile, hamburger showed on desktop — exactly
- *    backwards, and only caught by actually testing both widths in a
- *    real browser). Because ancestry-matching doesn't depend on the
- *    current viewport, you don't need separate mobile/desktop passes for
- *    this step — one pass that always recurses into every @media block
+ *    backwards). Because ancestry-matching doesn't depend on the current
+ *    viewport, one pass that always recurses into every @media block
  *    (regardless of whether it currently matches) and re-groups matched
- *    rules by their original conditionText is enough.
- * 4. Dedupe by WHOLE-RULE text, never by line — many unrelated rules
+ *    rules by their original conditionText is enough — no need for
+ *    separate mobile/desktop passes for this step.
+ * 4. MobileMenu.tsx is conditionally MOUNTED (`{open ? <motion.div>...
+ *    </motion.div> : null}`), so its classes are NOT in the DOM — hence
+ *    not captured by ancestry matching — unless it's actually open at
+ *    extraction time. This was shipped once assuming "opening it requires
+ *    JS, so the deferred stylesheet will have loaded by then" — WRONG on
+ *    a genuinely slow connection (confirmed on a real device at ~137
+ *    B/s, where the ~26KB stylesheet can take minutes): the menu opened
+ *    as a fully transparent, unstyled overlay with no background, no
+ *    z-index, and body-sized default text, which reads as "the menu is
+ *    just missing". Before extracting, click the hamburger button
+ *    (`document.querySelector('header button').click()`) and wait for
+ *    `document.querySelector('nav[aria-label="Mobile"]')` to exist, so
+ *    its classes get swept up by the same header-ancestry check — it's a
+ *    child of <header>, so this needs no separate root or special case.
+ * 5. Dedupe by WHOLE-RULE text, never by line — many unrelated rules
  *    share a bare closing-brace-only line, and deduping line-by-line
  *    silently drops real closing braces (produced genuinely malformed,
  *    unbalanced CSS once during development of this file).
- * 5. Keep @layer properties/theme/base wholesale (cheap, always needed).
+ * 6. Keep @layer properties/theme/base wholesale (cheap, always needed).
  *    Keep @font-face only for weights actually referenced above the fold
  *    (currently Geist Sans 400/500/600 — NOT 700, and NOT Geist Mono at
  *    all: nothing in Navbar/Hero uses font-mono or font-bold, and Geist
  *    Mono's weight-500 @font-face rules embed huge base64 font data for
  *    unicode-range subsets, which is what made an early, unfiltered
- *    version of this file 41KB instead of ~19KB).
- * 6. Known, accepted scope gap: MobileMenu.tsx is conditionally MOUNTED
- *    (`{open ? <motion.div>...</motion.div> : null}`), so its classes
- *    aren't in the DOM (hence not captured) until a user clicks the
- *    hamburger. That's fine — clicking it requires JS to already be
- *    running, and by then the deferred stylesheet has almost certainly
- *    already loaded. Not worth force-opening the menu during extraction
- *    for this.
+ *    version of this file 41KB instead of ~20KB).
  * 7. Before shipping any regeneration, actually verify in a real browser:
  *    disable the real stylesheet (document.styleSheets with an .href,
  *    set .disabled = true), inject ONLY this file's content into a fresh
- *    <style>, and check getComputedStyle() for the nav/hamburger toggle
- *    at both a mobile and desktop width. Brace-balance and rule-count
- *    checks catch malformed CSS but NOT logically-wrong-but-valid CSS
- *    like bug #3 above — only checking real rendered behavior does.
+ *    <style>, and check getComputedStyle() for (a) the nav/hamburger
+ *    toggle at both a mobile and desktop width, AND (b) the opened
+ *    mobile menu's background/z-index/link sizing at mobile width. Brace-
+ *    balance and rule-count checks catch malformed CSS but NOT logically
+ *    -wrong-but-valid CSS like bugs #3 and #4 above — only checking real
+ *    rendered behavior does, and both of those specifically reproduce
+ *    only when the real stylesheet ISN'T loaded yet, so you must
+ *    disable it to test, not just load the page normally.
  */
 @layer properties {
   @supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))) {
@@ -164,11 +175,15 @@
 .inset-\[3px\] { inset: 3px; }
 .inset-x-0 { inset-inline: 0px; }
 .top-0 { top: 0px; }
+.top-\[72px\] { top: 72px; }
+.bottom-0 { bottom: 0px; }
+.z-40 { z-index: 40; }
 .z-50 { z-index: 50; }
 .mx-auto { margin-inline: auto; }
 .mt-6 { margin-top: calc(var(--spacing) * 6); }
 .mt-9 { margin-top: calc(var(--spacing) * 9); }
 .mb-5 { margin-bottom: calc(var(--spacing) * 5); }
+.block { display: block; }
 .flex { display: flex; }
 .grid { display: grid; }
 .hidden { display: none; }
@@ -228,6 +243,7 @@
 .bg-\[var\(--color-canvas\)\] { background-color: var(--color-canvas); }
 .bg-\[var\(--color-canvas\)\]\/70 { background-color: rgba(9, 9, 11, 0.7); }
 .bg-\[var\(--color-canvas\)\]\/85 { background-color: rgba(9, 9, 11, 0.85); }
+.bg-\[var\(--color-canvas\)\]\/98 { background-color: rgba(9, 9, 11, 0.98); }
 .bg-white\/\[0\.03\] { background-color: rgba(255, 255, 255, 0.03); }
 .p-2 { padding: calc(var(--spacing) * 2); }
 .px-2\.5 { padding-inline: calc(var(--spacing) * 2.5); }
@@ -238,8 +254,11 @@
 .py-1\.5 { padding-block: calc(var(--spacing) * 1.5); }
 .py-2\.5 { padding-block: calc(var(--spacing) * 2.5); }
 .py-3\.5 { padding-block: calc(var(--spacing) * 3.5); }
+.py-4 { padding-block: calc(var(--spacing) * 4); }
+.py-8 { padding-block: calc(var(--spacing) * 8); }
 .py-10 { padding-block: calc(var(--spacing) * 10); }
 .pt-24 { padding-top: calc(var(--spacing) * 24); }
+.text-2xl { font-size: var(--text-2xl); line-height: var(--tw-leading,var(--text-2xl--line-height)); }
 .text-4xl { font-size: var(--text-4xl); line-height: var(--tw-leading,var(--text-4xl--line-height)); }
 .text-base { font-size: var(--text-base); line-height: var(--tw-leading,var(--text-base--line-height)); }
 .text-lg { font-size: var(--text-lg); line-height: var(--tw-leading,var(--text-lg--line-height)); }
