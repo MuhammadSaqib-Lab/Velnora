@@ -125,6 +125,7 @@ export function FileHandover({
           ref={inputRef}
           type="file"
           multiple
+          aria-label="Upload project files"
           accept={ACCEPTED_HANDOVER_EXTENSIONS.join(',')}
           onChange={(e) => {
             processFiles(e.target.files)

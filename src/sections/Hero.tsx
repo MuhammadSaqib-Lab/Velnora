@@ -1,12 +1,9 @@
 import { ArrowRight, Compass } from 'lucide-react'
-import { useReducedMotion, motion } from 'motion/react'
 import { Button } from '@/components/ui/Button'
 import { HeroVisual } from '@/components/three/HeroVisual'
 import { availabilityStatus } from '@/data/availability'
 
 export function Hero() {
-  const reduce = useReducedMotion()
-
   return (
     <section
       id="home"
@@ -18,11 +15,7 @@ export function Hero() {
       />
 
       <div className="container-app grid items-center gap-12 py-10 sm:gap-16 sm:py-16 lg:grid-cols-[1.1fr_1fr] lg:gap-12 lg:py-20">
-        <motion.div
-          initial={reduce ? false : { opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        >
+        <div className="animate-hero-fade-up">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent-dim)] px-4 py-1.5 shadow-[0_0_24px_-6px_rgba(16,185,129,0.55)]">
             <span className="relative flex h-2 w-2" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-accent)] opacity-75" />
@@ -56,16 +49,11 @@ export function Hero() {
               Explore Our Work
             </Button>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={reduce ? false : { opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto w-full max-w-[280px] md:max-w-md lg:max-w-none"
-        >
+        <div className="animate-hero-scale-in mx-auto w-full max-w-[280px] md:max-w-md lg:max-w-none">
           <HeroVisual />
-        </motion.div>
+        </div>
       </div>
     </section>
   )

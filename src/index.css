@@ -44,6 +44,28 @@
   }
 }
 
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border-soft);
@@ -116,6 +138,21 @@
 }
 
 @layer utilities {
+  /*
+   * CSS-driven (not Framer Motion/JS-driven) entrance for the hero, so the
+   * LCP text paints as soon as the browser can render it instead of
+   * waiting on React hydration + Framer Motion to start the animation.
+   * prefers-reduced-motion is already handled globally above (forces
+   * animation-duration to ~0 for every animation, including these).
+   */
+  .animate-hero-fade-up {
+    animation: hero-fade-up 0.7s var(--ease-premium) both;
+  }
+
+  .animate-hero-scale-in {
+    animation: hero-scale-in 0.8s var(--ease-premium) 0.15s both;
+  }
+
   .container-app {
     width: 100%;
     max-width: 88rem;

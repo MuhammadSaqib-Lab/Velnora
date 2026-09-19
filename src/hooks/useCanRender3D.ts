@@ -12,7 +12,14 @@ function hasWebGL(): boolean {
 function isLikelyLowPower(): boolean {
   const cores = navigator.hardwareConcurrency ?? 4
   const isNarrowViewport = window.innerWidth < 640
-  return cores <= 4 && isNarrowViewport
+  // Either signal alone is enough to skip the 3D scene: a narrow viewport
+  // means a phone regardless of reported core count (many phones report
+  // 6-8 cores but still choke on R3F/three.js), and a low core count means
+  // a weak device regardless of viewport width. Previously this required
+  // BOTH conditions (AND), so most modern phones — which report >4 cores —
+  // slipped through and loaded the ~250KB gzipped 3D bundle on mobile,
+  // driving up TBT/long tasks/main-thread time there.
+  return cores <= 4 || isNarrowViewport
 }
 
 /**

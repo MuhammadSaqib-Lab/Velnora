@@ -1,0 +1,38 @@
+# Velnora
+
+> AI-powered web development agency. Velnora designs and builds high-performance
+> websites, AI-powered digital solutions, and SEO strategies for growing businesses.
+
+Velnora is a single-page marketing site (velnora.com) covering the company's
+services, process, portfolio, and contact channels. Content on the page is
+plain HTML/DOM (not canvas-only), so it can be read directly.
+
+## Services
+
+- Website Development — custom-built websites on modern frameworks, structured
+  around how customers decide to buy, book, or get in touch.
+- AI-Powered Solutions — AI-assisted search, content, and support tooling
+  layered into a site to reduce routine inbound questions.
+- SEO — technical SEO, content structure, and on-page fundamentals built in
+  from the start.
+- UI/UX Design — interface and interaction design grounded in real user flows.
+- Website Optimization — performance audits and fixes across images, scripts,
+  and hosting.
+- Business Automation — workflow automation connecting forms, inbox, and
+  scheduling.
+
+## Pages
+
+- [Homepage](https://www.velnora.com/): services, process, portfolio ("Selected
+  Work" — a mix of real client projects and clearly labeled concept projects),
+  client reviews, and a contact form.
+
+## Contact
+
+- Contact form on the homepage (`#contact`), or email via the address listed
+  in the site footer.
+
+## Notes for crawlers
+
+- `/admin` and `/internal/*` are internal tooling, not public content —
+  excluded via robots.txt and not part of the site's marketing content.
