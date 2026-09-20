@@ -4,6 +4,7 @@ import { CostEstimator } from '@/sections/CostEstimator'
 import { CTASection } from '@/sections/CTASection'
 import { FAQ } from '@/sections/FAQ'
 import { FinalCTA } from '@/sections/FinalCTA'
+import { Founder } from '@/sections/Founder'
 import { FreeAudit } from '@/sections/FreeAudit'
 import { Hero } from '@/sections/Hero'
 import { LogoStrip } from '@/sections/LogoStrip'
@@ -32,6 +33,7 @@ export function Home() {
       <Process />
       <Work />
       <About />
+      <Founder />
       <WhyChooseUs />
       <Reviews />
       <CTASection />
