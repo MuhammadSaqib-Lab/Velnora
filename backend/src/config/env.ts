@@ -73,6 +73,19 @@ const envSchema = z.object({
   // for their address).
   ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   ADMIN_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+
+  // AI Assistant (Admin Dashboard voice console). Text commands
+  // (POST /api/admin/ai-assistant/command) only need ANTHROPIC_API_KEY,
+  // already above. ELEVENLABS_API_KEY is voice OUTPUT only — leave it
+  // unset and POST /api/admin/ai-assistant/speak returns a clear "not
+  // configured" error instead of the server failing to start, same
+  // reasoning as every other optional provider key in this file.
+  ELEVENLABS_API_KEY: z.string().min(1).optional(),
+  // Default is ElevenLabs' public "Rachel" voice (works out of the box
+  // for any account/key, no per-voice setup required).
+  ELEVENLABS_VOICE_ID: z.string().min(1).default('21m00Tcm4TlvDq8ikWAM'),
+  AI_ASSISTANT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
+  AI_ASSISTANT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(15),
 })
 
 function loadEnv() {

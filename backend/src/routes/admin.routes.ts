@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getAdminOverview } from '../controllers/adminOverview.controller.js'
+import { postAssistantCommand, postAssistantSpeak } from '../controllers/adminAiAssistant.controller.js'
 import {
   getClientLeadById,
   getClientLeadConversationById,
@@ -7,10 +8,12 @@ import {
   patchClientLeadStatus,
 } from '../controllers/adminClientLeads.controller.js'
 import { deleteReviewById, getAdminReviews, patchReviewStatus } from '../controllers/adminReviews.controller.js'
+import { aiAssistantRateLimiter } from '../middleware/rateLimiter.js'
 import { requireAdminSession } from '../middleware/requireAdminSession.js'
 import { validateBody } from '../middleware/validateBody.js'
 import { validateQuery } from '../middleware/validateQuery.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
+import { assistantCommandSchema, assistantSpeakSchema } from '../validators/aiAssistant.validator.js'
 import { clientLeadListQuerySchema, clientLeadStatusUpdateSchema } from '../validators/adminClientLeads.validator.js'
 import { adminReviewListQuerySchema, reviewStatusUpdateSchema } from '../validators/review.validator.js'
 
@@ -50,3 +53,20 @@ adminRouter.patch(
 adminRouter.get('/reviews', validateQuery(adminReviewListQuerySchema), asyncHandler(getAdminReviews))
 adminRouter.patch('/reviews/:id/status', validateBody(reviewStatusUpdateSchema), asyncHandler(patchReviewStatus))
 adminRouter.delete('/reviews/:id', asyncHandler(deleteReviewById))
+
+// AI Assistant: voice/text console that previews Lead Finder Agent
+// actions without executing them (see orchestrator.service.ts). Both
+// endpoints cost real money per call (Claude, and ElevenLabs for
+// /speak), hence the rate limiter on top of the router-wide session gate.
+adminRouter.post(
+  '/ai-assistant/command',
+  aiAssistantRateLimiter,
+  validateBody(assistantCommandSchema),
+  asyncHandler(postAssistantCommand),
+)
+adminRouter.post(
+  '/ai-assistant/speak',
+  aiAssistantRateLimiter,
+  validateBody(assistantSpeakSchema),
+  asyncHandler(postAssistantSpeak),
+)

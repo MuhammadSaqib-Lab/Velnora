@@ -68,6 +68,28 @@ export const leadFinderRateLimiter = rateLimit({
 })
 
 /**
+ * Applied to the AI Assistant's two endpoints (command, speak) — each
+ * command costs real money against the AI provider, and each spoken
+ * reply against ElevenLabs. Admin-only traffic is naturally low-volume,
+ * but this still bounds a runaway client bug (e.g. a retry loop) from
+ * turning into an unbounded bill the way aiChatRateLimiter does for the
+ * public chat endpoint.
+ */
+export const aiAssistantRateLimiter = rateLimit({
+  windowMs: env.AI_ASSISTANT_RATE_LIMIT_WINDOW_MS,
+  limit: env.AI_ASSISTANT_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    const response: ApiError = {
+      success: false,
+      message: 'Too many AI Assistant requests. Please wait a moment and try again.',
+    }
+    res.status(429).json(response)
+  },
+})
+
+/**
  * Applied only to POST /api/auth/admin/login — the primary brute-force
  * defense, since there is no per-account lockout (see
  * adminAuth.service.ts's loginAdmin for why: an account-level lockout
