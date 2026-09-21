@@ -3,7 +3,7 @@ import type { AssistantState } from './assistantState'
 /**
  * Visual parameters an avatar renderer needs, independent of HOW it's
  * drawn. A procedural face reads these to drive shader uniforms and
- * mesh transforms (see AiFaceScene.tsx); a future real VRM avatar would
+ * mesh transforms (see avatar/GltfFaceAvatar.tsx); a future real VRM avatar would
  * read the exact same shape to drive its expression manager/blendshapes
  * instead — swapping the renderer never requires touching the AI
  * orchestration, voice, or chat logic that calls setState().
@@ -17,25 +17,35 @@ export interface ExpressionParams {
   mouthBase: number
   /** Mouth corner curl: -1 (concerned/frown) to 1 (positive/smile), 0 neutral. */
   mouthCurl: number
-  /** Brow/eye narrowing: -1 (relaxed/wide) to 1 (focused/narrow). */
+  /** Eyelid narrowing / squint: 0 (relaxed, fully open) to 1 (focused/narrow). */
   eyeFocus: number
+  /** Eyebrow lift: -1 (furrowed/lowered) to 1 (raised), 0 neutral. */
+  browRaise: number
   /** Subtle head tilt in radians applied once on state entry. */
   headTilt: number
   /** How fast idle micro-motion (breathing/gaze) plays in this state. */
   restlessness: number
 }
 
+/**
+ * Tuned for a premium, restrained "digital human employee" read rather
+ * than a neon mascot — glow intensities stay low (peak 0.75) and the
+ * emerald family is the ONLY accent color (see CLAUDE.md's single-
+ * accent rule); amber is used for concerned/caution as a semantic
+ * warning color, matching status colors used elsewhere in the admin
+ * dashboard, not as a second brand accent.
+ */
 const STATES: Record<AssistantState, ExpressionParams> = {
-  idle: { glowColor: '#34d399', glowIntensity: 0.5, mouthBase: 0.05, mouthCurl: 0.1, eyeFocus: 0, headTilt: 0, restlessness: 0.5 },
-  listening: { glowColor: '#6ee7b7', glowIntensity: 0.75, mouthBase: 0.04, mouthCurl: 0.05, eyeFocus: 0.3, headTilt: 0.02, restlessness: 0.3 },
-  attentive: { glowColor: '#6ee7b7', glowIntensity: 0.8, mouthBase: 0.04, mouthCurl: 0.1, eyeFocus: 0.5, headTilt: 0.03, restlessness: 0.2 },
-  thinking: { glowColor: '#a7f3d0', glowIntensity: 0.65, mouthBase: 0.03, mouthCurl: -0.05, eyeFocus: 0.6, headTilt: -0.04, restlessness: 0.15 },
-  speaking: { glowColor: '#34d399', glowIntensity: 1, mouthBase: 0.1, mouthCurl: 0.2, eyeFocus: 0.2, headTilt: 0, restlessness: 0.6 },
-  working: { glowColor: '#10b981', glowIntensity: 0.7, mouthBase: 0.04, mouthCurl: 0, eyeFocus: 0.4, headTilt: 0, restlessness: 0.4 },
-  success: { glowColor: '#34d399', glowIntensity: 1.1, mouthBase: 0.06, mouthCurl: 0.6, eyeFocus: 0.1, headTilt: 0.05, restlessness: 0.5 },
-  positive: { glowColor: '#6ee7b7', glowIntensity: 0.9, mouthBase: 0.06, mouthCurl: 0.45, eyeFocus: 0.1, headTilt: 0.03, restlessness: 0.5 },
-  concerned: { glowColor: '#fbbf24', glowIntensity: 0.6, mouthBase: 0.04, mouthCurl: -0.4, eyeFocus: 0.5, headTilt: -0.05, restlessness: 0.2 },
-  caution: { glowColor: '#fbbf24', glowIntensity: 0.75, mouthBase: 0.03, mouthCurl: -0.3, eyeFocus: 0.6, headTilt: -0.03, restlessness: 0.15 },
+  idle: { glowColor: '#34d399', glowIntensity: 0.32, mouthBase: 0.04, mouthCurl: 0.08, eyeFocus: 0, browRaise: 0, headTilt: 0, restlessness: 0.5 },
+  listening: { glowColor: '#6ee7b7', glowIntensity: 0.48, mouthBase: 0.03, mouthCurl: 0.05, eyeFocus: 0.1, browRaise: 0.25, headTilt: 0.02, restlessness: 0.3 },
+  attentive: { glowColor: '#6ee7b7', glowIntensity: 0.5, mouthBase: 0.03, mouthCurl: 0.08, eyeFocus: 0.15, browRaise: 0.35, headTilt: 0.03, restlessness: 0.2 },
+  thinking: { glowColor: '#a7f3d0', glowIntensity: 0.4, mouthBase: 0.02, mouthCurl: -0.05, eyeFocus: 0.55, browRaise: -0.15, headTilt: -0.05, restlessness: 0.15 },
+  speaking: { glowColor: '#34d399', glowIntensity: 0.55, mouthBase: 0.09, mouthCurl: 0.18, eyeFocus: 0.1, browRaise: 0.15, headTilt: 0, restlessness: 0.6 },
+  working: { glowColor: '#10b981', glowIntensity: 0.45, mouthBase: 0.03, mouthCurl: 0, eyeFocus: 0.35, browRaise: 0.05, headTilt: 0, restlessness: 0.4 },
+  success: { glowColor: '#34d399', glowIntensity: 0.65, mouthBase: 0.05, mouthCurl: 0.6, eyeFocus: 0.05, browRaise: 0.4, headTilt: 0.05, restlessness: 0.5 },
+  positive: { glowColor: '#6ee7b7', glowIntensity: 0.55, mouthBase: 0.05, mouthCurl: 0.45, eyeFocus: 0.05, browRaise: 0.3, headTilt: 0.03, restlessness: 0.5 },
+  concerned: { glowColor: '#fbbf24', glowIntensity: 0.4, mouthBase: 0.03, mouthCurl: -0.4, eyeFocus: 0.4, browRaise: -0.45, headTilt: -0.05, restlessness: 0.2 },
+  caution: { glowColor: '#fbbf24', glowIntensity: 0.5, mouthBase: 0.02, mouthCurl: -0.3, eyeFocus: 0.5, browRaise: -0.3, headTilt: -0.03, restlessness: 0.15 },
 }
 
 /**

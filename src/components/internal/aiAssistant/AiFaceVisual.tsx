@@ -3,7 +3,14 @@ import { useCanRender3D } from '@/hooks/useCanRender3D'
 import type { AssistantState } from './assistantState'
 import type { MouthShape } from './useAudioAnalyser'
 
-const AiFaceScene = lazy(() => import('./AiFaceScene').then((m) => ({ default: m.AiFaceScene })))
+/**
+ * This lazy import is the adapter seam described in
+ * avatar/AvatarAdapter.ts: swapping in a future VRMAvatarAdapter (once a
+ * licensed VRM/GLB human model exists) means changing only this one
+ * line — the component it resolves to is the only thing here that knows
+ * it's Three.js at all.
+ */
+const AvatarRenderer = lazy(() => import('./avatar/GltfFaceAvatar').then((m) => ({ default: m.GltfFaceAvatar })))
 
 const STATE_LABEL: Record<AssistantState, string> = {
   idle: 'Idle',
@@ -73,7 +80,7 @@ export function AiFaceVisual({
 
   return (
     <Suspense fallback={<FaceFallback state={state} />}>
-      <AiFaceScene
+      <AvatarRenderer
         state={state}
         amplitudeRef={amplitudeRef}
         mouthShapeRef={mouthShapeRef}

@@ -31,6 +31,35 @@ const ACTION_NODES: Record<string, string[]> = {
 
 const ACTIVE_WINDOW_MS = 4000
 
+/** Real, derivable status text — never a fabricated per-stage progress
+ * report. The "AI Assistant" node reflects the actual AssistantState;
+ * pipeline nodes only say "Working" while they're inside the real
+ * ACTIVE_WINDOW_MS after Claude called simulate_agent_action naming
+ * them, otherwise "Waiting". */
+function assistantNodeStatus(state: AssistantState): string {
+  switch (state) {
+    case 'idle':
+      return 'Waiting'
+    case 'listening':
+    case 'attentive':
+      return 'Listening'
+    case 'thinking':
+      return 'Analyzing'
+    case 'speaking':
+      return 'Active'
+    case 'working':
+      return 'Working'
+    case 'success':
+    case 'positive':
+      return 'Completed'
+    case 'concerned':
+    case 'caution':
+      return 'Error'
+    default:
+      return 'Waiting'
+  }
+}
+
 /**
  * An informational diagram of how a request actually flows through this
  * system — not a live per-stage status board, since the backend has no
@@ -65,30 +94,32 @@ export function AgentOrchestration({
   if (state !== 'idle') activeIds.add('assistant')
 
   return (
-    <div className="rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02] p-4">
+    <div className="rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-xl">
       <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--color-ink-faint)]">
         Agent Orchestration
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        {NODES.map((node, i) => (
-          <div key={node.id} className="flex items-center gap-2">
-            <div
-              className={cn(
-                'flex flex-col items-center gap-1.5 rounded-[var(--radius-field)] border px-3 py-2 transition-colors duration-500',
-                activeIds.has(node.id)
-                  ? 'border-[var(--color-accent)]/50 bg-[var(--color-accent-dim)]'
-                  : 'border-white/[0.08] bg-white/[0.02]',
-              )}
-            >
-              <node.icon
-                className={cn('h-4 w-4', activeIds.has(node.id) ? 'text-[var(--color-accent)]' : 'text-[var(--color-ink-faint)]')}
-                strokeWidth={1.75}
-              />
-              <span className="whitespace-nowrap text-[11px] text-[var(--color-ink-muted)]">{node.label}</span>
+        {NODES.map((node, i) => {
+          const active = activeIds.has(node.id)
+          const statusText = node.id === 'assistant' ? assistantNodeStatus(state) : active ? 'Working' : 'Waiting'
+          return (
+            <div key={node.id} className="flex items-center gap-2">
+              <div
+                className={cn(
+                  'flex flex-col items-center gap-1 rounded-[var(--radius-field)] border px-3 py-2 transition-colors duration-500',
+                  active ? 'border-[var(--color-accent)]/50 bg-[var(--color-accent-dim)]' : 'border-white/[0.08] bg-white/[0.02]',
+                )}
+              >
+                <node.icon className={cn('h-4 w-4', active ? 'text-[var(--color-accent)]' : 'text-[var(--color-ink-faint)]')} strokeWidth={1.75} />
+                <span className="whitespace-nowrap text-[11px] text-[var(--color-ink-muted)]">{node.label}</span>
+                <span className={cn('whitespace-nowrap text-[9px]', active ? 'text-[var(--color-accent)]' : 'text-[var(--color-ink-faint)]')}>
+                  {statusText}
+                </span>
+              </div>
+              {i < NODES.length - 1 ? <span className="text-[var(--color-ink-faint)]">→</span> : null}
             </div>
-            {i < NODES.length - 1 ? <span className="text-[var(--color-ink-faint)]">→</span> : null}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

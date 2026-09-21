@@ -73,7 +73,7 @@ export function LiveActivity({ overview }: { overview: AdminOverview | null }) {
         </span>
       </div>
 
-      <div className="rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02] p-2">
+      <div className="rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.03] p-2 backdrop-blur-xl">
         {feed.length === 0 ? (
           <p className="px-2 py-4 text-center text-xs text-[var(--color-ink-faint)]">
             {overview ? 'No recent activity yet.' : 'Sign in to see live agent activity.'}

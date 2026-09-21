@@ -11,6 +11,21 @@ const AGENT_ICON: Record<string, typeof Radar> = {
   'client-handling': MessageSquareText,
 }
 
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+/** "Active" only means real activity landed within the last 10 minutes
+ * (per the most recent real timestamp in overview data) — never a
+ * fabricated "always working" indicator. */
+const ACTIVE_WINDOW_MS = 10 * 60 * 1000
+
 /**
  * Only the two agents that actually exist in this codebase get a card
  * with live status (see assistantState.ts's comment on AGENT_REGISTRY).
@@ -38,8 +53,24 @@ export function AgentTeam({ overview, status }: { overview: AdminOverview | null
               ? `${overview.clientAgent.total} conversations · ${overview.clientAgent.highIntentCount} high intent`
               : null
 
+        const lastActivityIso =
+          agent.id === 'lead-finder'
+            ? (overview?.recentActivity.recentDiscoveries[0]?.createdAt ?? overview?.recentActivity.recentOutreach[0]?.updatedAt ?? null)
+            : agent.id === 'client-handling'
+              ? (overview?.recentActivity.recentConversations[0]?.createdAt ?? null)
+              : null
+
         return (
-          <AgentCard key={agent.id} icon={Icon} name={agent.name} description={agent.description} summary={summary} status={status} capabilities={agent.capabilities} />
+          <AgentCard
+            key={agent.id}
+            icon={Icon}
+            name={agent.name}
+            description={agent.description}
+            summary={summary}
+            status={status}
+            capabilities={agent.capabilities}
+            lastActivityIso={lastActivityIso}
+          />
         )
       })}
     </div>
@@ -53,6 +84,7 @@ function AgentCard({
   summary,
   status,
   capabilities,
+  lastActivityIso,
 }: {
   icon: typeof Radar
   name: string
@@ -60,27 +92,44 @@ function AgentCard({
   summary: string | null
   status: ConnectionStatus
   capabilities: string[]
+  lastActivityIso: string | null
 }) {
   const [expanded, setExpanded] = useState(false)
+  const isActive = status === 'online' && !!lastActivityIso && Date.now() - new Date(lastActivityIso).getTime() < ACTIVE_WINDOW_MS
 
   return (
-    <div className="rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02] p-4">
+    <div
+      className={cn(
+        'rounded-[var(--radius-panel)] border bg-white/[0.03] p-4 backdrop-blur-xl transition-colors',
+        isActive ? 'border-[var(--color-accent)]/35 shadow-[0_0_24px_-8px_rgba(52,211,153,0.4)]' : 'border-white/[0.08]',
+      )}
+    >
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-dim)]">
           <Icon className="h-4 w-4 text-[var(--color-accent)]" strokeWidth={1.75} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span
-              className={cn(
-                'h-1.5 w-1.5 shrink-0 rounded-full',
-                status === 'online' ? 'bg-[var(--color-accent)]' : status === 'connecting' ? 'bg-amber-400' : 'bg-red-400',
-              )}
-            />
-            <p className="truncate text-sm font-medium text-[var(--color-ink)]">{name}</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 shrink-0 rounded-full',
+                  status === 'online' ? 'bg-[var(--color-accent)]' : status === 'connecting' ? 'bg-amber-400' : 'bg-red-400',
+                )}
+              />
+              <p className="truncate text-sm font-medium text-[var(--color-ink)]">{name}</p>
+            </div>
+            {status === 'online' ? (
+              <span className={cn('shrink-0 text-[10px] font-medium', isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-ink-faint)]')}>
+                {isActive ? 'Active' : 'Idle'}
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-[var(--color-ink-muted)]">{description}</p>
           {summary ? <p className="mt-1.5 text-xs text-[var(--color-ink-faint)]">{summary}</p> : null}
+          {lastActivityIso ? (
+            <p className="mt-1 text-[10px] text-[var(--color-ink-faint)]">Last activity: {formatRelativeTime(lastActivityIso)}</p>
+          ) : null}
         </div>
       </div>
 

@@ -113,6 +113,10 @@ The architecture is ready for future SEO expansion (dedicated `/services/*`, `/i
 
 **Backend** needs a Node host with a persistent PostgreSQL connection (e.g. a Vercel/Render/Railway Node service + a managed Postgres instance). Run `npm run build && npm run prisma:deploy && npm start` in production; `prisma:deploy` applies existing migrations without generating new ones (safe for CI/CD).
 
+## Third-party assets
+
+`public/models/facecap.glb` (the AI Assistant admin page's face) is a facial-capture rig by [Face Cap](https://www.bannaflak.com/face-cap), reused from three.js's own official `webgl_morphtargets_face` example (`examples/models/gltf/facecap.glb` in the [three.js repo](https://github.com/mrdoob/three.js), MIT-licensed project) under the same "model by Face Cap" attribution three.js itself displays.
+
 ## License
 
 Proprietary, all rights reserved.

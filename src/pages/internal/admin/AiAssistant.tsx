@@ -6,7 +6,9 @@ import { AiFaceVisual } from '@/components/internal/aiAssistant/AiFaceVisual'
 import type { AssistantState } from '@/components/internal/aiAssistant/assistantState'
 import { LiveActivity } from '@/components/internal/aiAssistant/LiveActivity'
 import { useAudioAnalyser } from '@/components/internal/aiAssistant/useAudioAnalyser'
+import { useMicLevel } from '@/components/internal/aiAssistant/useMicLevel'
 import { useSpeechRecognition } from '@/components/internal/aiAssistant/useSpeechRecognition'
+import { Waveform } from '@/components/internal/aiAssistant/Waveform'
 import { apiGet, apiPost, ApiNetworkError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import type { AdminOverview } from './types'
@@ -65,6 +67,7 @@ export function AiAssistant() {
 
   const speech = useSpeechRecognition()
   const audio = useAudioAnalyser()
+  const micLevelRef = useMicLevel(speech.isListening)
   const historyRef = useRef<{ role: 'user' | 'assistant'; content: string }[]>([])
   const logEndRef = useRef<HTMLDivElement>(null)
 
@@ -208,7 +211,7 @@ export function AiAssistant() {
 
         {/* CENTER — Face + state + orchestration (order-1 on mobile: highest priority) */}
         <div className="order-1 flex flex-col gap-4 lg:order-2">
-          <div className="relative h-80 overflow-hidden rounded-[var(--radius-panel)] border border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-transparent sm:h-96">
+          <div className="relative h-80 overflow-hidden rounded-[var(--radius-panel)] border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-transparent backdrop-blur-xl sm:h-96">
             <AiFaceVisual
               state={effectiveState}
               amplitudeRef={audio.amplitudeRef}
@@ -230,9 +233,9 @@ export function AiAssistant() {
         <div className="order-2 flex flex-col gap-5 lg:order-3">
           <LiveActivity overview={overview} />
 
-          <div className="flex flex-col rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02]">
+          <div className="flex flex-col rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl">
             <p className="border-b border-white/[0.08] px-4 py-2.5 text-sm font-medium text-[var(--color-ink)]">
-              Conversation
+              Recent Conversation
             </p>
             <div className="max-h-72 flex-1 space-y-3 overflow-y-auto p-4" role="log" aria-live="polite">
               {log.map((entry) => (
@@ -248,7 +251,7 @@ export function AiAssistant() {
       </div>
 
       {/* BOTTOM — Voice control bar */}
-      <div className="order-4 mt-5 rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.02] p-4">
+      <div className="order-4 mt-5 rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-xl">
         {speech.error ? (
           <p className="mb-2 flex items-center gap-2 text-xs text-amber-400">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
@@ -284,8 +287,18 @@ export function AiAssistant() {
           <div className="hidden shrink-0 sm:block">
             <p className="text-sm font-medium text-[var(--color-ink)]">Talk to your AI team</p>
             <p className="text-xs text-[var(--color-ink-faint)]">
-              {speech.isListening ? 'Listening…' : 'Use voice or type to communicate'}
+              {speech.isListening
+                ? 'Listening…'
+                : effectiveState === 'thinking'
+                  ? 'Processing…'
+                  : effectiveState === 'speaking'
+                    ? 'AI is speaking…'
+                    : 'Use voice or type to communicate'}
             </p>
+          </div>
+
+          <div className="hidden shrink-0 md:block">
+            <Waveform levelRef={speech.isListening ? micLevelRef : audio.amplitudeRef} active={speech.isListening || audio.isSpeaking} />
           </div>
 
           <input
