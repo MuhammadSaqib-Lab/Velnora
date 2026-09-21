@@ -38,10 +38,18 @@ function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefin
   return w.SpeechRecognition ?? w.webkitSpeechRecognition
 }
 
+const ERROR_MESSAGES: Record<string, string> = {
+  'not-allowed': 'Microphone access was denied. Allow it in your browser settings, or type instead.',
+  'service-not-allowed': 'Microphone access was denied. Allow it in your browser settings, or type instead.',
+  'no-speech': "Didn't catch that — try again or type your message.",
+  'audio-capture': 'No microphone found. You can still type your message.',
+}
+
 export function useSpeechRecognition() {
   const [isSupported] = useState(() => !!getSpeechRecognitionCtor())
   const [isListening, setIsListening] = useState(false)
   const [interimTranscript, setInterimTranscript] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const onFinalRef = useRef<(text: string) => void>(() => {})
 
@@ -55,6 +63,7 @@ export function useSpeechRecognition() {
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor) return
 
+    setError(null)
     onFinalRef.current = onFinal
     const recognition = new Ctor()
     recognition.continuous = false
@@ -73,9 +82,10 @@ export function useSpeechRecognition() {
       }
       setInterimTranscript(interim)
     }
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setIsListening(false)
       setInterimTranscript('')
+      setError(ERROR_MESSAGES[event.error] ?? null)
     }
     recognition.onend = () => {
       setIsListening(false)
@@ -91,5 +101,5 @@ export function useSpeechRecognition() {
     recognitionRef.current?.stop()
   }, [])
 
-  return { isSupported, isListening, interimTranscript, start, stop }
+  return { isSupported, isListening, interimTranscript, error, start, stop }
 }
