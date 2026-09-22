@@ -13,7 +13,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()"
+          "value": "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()"
         },
         {
           "key": "Strict-Transport-Security",
@@ -21,7 +21,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-Az4qqCsEAyV5+dsb0ehg+fNt4SequT1eq3uSsdKeh6A=' 'sha256-lBRfg4HqTs7Kbxy/q517ineQWHg6dKiAAg0/qUXXsLs='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.simpleicons.org; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-Az4qqCsEAyV5+dsb0ehg+fNt4SequT1eq3uSsdKeh6A=' 'sha256-lBRfg4HqTs7Kbxy/q517ineQWHg6dKiAAg0/qUXXsLs='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.simpleicons.org; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     },

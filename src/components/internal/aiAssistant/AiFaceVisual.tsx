@@ -1,4 +1,5 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Component, Suspense, lazy, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useCanRender3D } from '@/hooks/useCanRender3D'
 import type { AssistantState } from './assistantState'
 import type { MouthShape } from './useAudioAnalyser'
@@ -57,6 +58,37 @@ function FaceFallback({ state }: { state: AssistantState }) {
 }
 
 /**
+ * A crashed avatar (a blocked WASM instantiation, a worker CSP
+ * violation, a corrupt/unreachable model file, anything) must never
+ * take down the whole AI Operations page — only this class component
+ * boundary can catch a render-phase throw (Suspense catches thrown
+ * promises, not thrown errors; R3F's Canvas internally catches errors
+ * from its own reconciler and re-throws them in the outer tree
+ * specifically so a boundary like this one can catch them). Falls back
+ * to the same FaceFallback used for unsupported WebGL.
+ * componentDidCatch is intentionally a no-op beyond setting state,
+ * matching src/components/ErrorBoundary.tsx's own convention — this
+ * codebase has no console.* calls anywhere (see SECURITY.md's
+ * "Information leakage" audit).
+ */
+class AvatarErrorBoundary extends Component<{ state: AssistantState; children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch() {
+    // Intentionally empty — see class comment.
+  }
+
+  render() {
+    if (this.state.hasError) return <FaceFallback state={this.props.state} />
+    return this.props.children
+  }
+}
+
+/**
  * Reuses the public site's WebGL-capability gate (src/hooks/useCanRender3D.ts)
  * so this admin-only 3D face degrades the same safe way the public
  * Hero's 3D visual does on an unsupported browser or genuinely weak
@@ -79,14 +111,16 @@ export function AiFaceVisual({
   if (!canRender3D) return <FaceFallback state={state} />
 
   return (
-    <Suspense fallback={<FaceFallback state={state} />}>
-      <AvatarRenderer
-        state={state}
-        amplitudeRef={amplitudeRef}
-        mouthShapeRef={mouthShapeRef}
-        isSpeaking={isSpeaking}
-        reducedMotion={reducedMotion}
-      />
-    </Suspense>
+    <AvatarErrorBoundary state={state}>
+      <Suspense fallback={<FaceFallback state={state} />}>
+        <AvatarRenderer
+          state={state}
+          amplitudeRef={amplitudeRef}
+          mouthShapeRef={mouthShapeRef}
+          isSpeaking={isSpeaking}
+          reducedMotion={reducedMotion}
+        />
+      </Suspense>
+    </AvatarErrorBoundary>
   )
 }
