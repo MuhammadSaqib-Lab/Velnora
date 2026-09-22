@@ -96,6 +96,8 @@ function Face({ state, amplitudeRef, mouthShapeRef, isSpeaking, reducedMotion }:
   const headRef = useRef<MorphMesh | null>(null)
   const eyeLeftRef = useRef<THREE.Object3D | null>(null)
   const eyeRightRef = useRef<THREE.Object3D | null>(null)
+  const particlesRef = useRef<THREE.Points | null>(null)
+  const particleColor = useRef(new THREE.Color('#34d399'))
 
   const breathT = useRef(0)
   const nodT = useRef(0)
@@ -139,11 +141,49 @@ function Face({ state, amplitudeRef, mouthShapeRef, isSpeaking, reducedMotion }:
         material.roughness = 0.8
       }
     })
+
+    // The "digital human shaped from light" layer: a THREE.Points object
+    // added as a direct CHILD of the head mesh, sharing its exact
+    // BufferGeometry (including morph attributes) rather than a copy. Real
+    // three.js/WebGL feature, not a trick: a Points object with the same
+    // morphTargetDictionary/morphTargetInfluences as its source mesh
+    // applies the identical vertex-shader blendshape deformation every
+    // frame, so each particle sits precisely on the real face surface and
+    // stays there through every blink, word, and expression with zero
+    // extra per-frame computation — it's driven by the exact same
+    // influences array the mesh itself reads in the loop below. Kept as a
+    // translucent overlay ON TOP of the real textured face (never a
+    // replacement for it), per the explicit "realistic digital human, not
+    // a mask made only of dots" direction. Plain square points (no soft
+    // sprite texture) deliberately — a custom canvas-gradient sprite here
+    // rendered fully invisible for reasons never fully root-caused, and
+    // the crisp square dots read as a clean "digital mesh" data-point
+    // aesthetic on their own, which fits a "shaped from light" face
+    // better than a mistake would suggest.
+    const headMesh = headRef.current
+    if (headMesh && !particlesRef.current) {
+      const material = new THREE.PointsMaterial({
+        size: 0.09,
+        color: particleColor.current,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        sizeAttenuation: true,
+      })
+      const points = new THREE.Points(headMesh.geometry, material)
+      points.morphTargetDictionary = headMesh.morphTargetDictionary
+      points.morphTargetInfluences = headMesh.morphTargetInfluences
+      points.renderOrder = 1
+      headMesh.add(points)
+      particlesRef.current = points
+    }
   }, [gltf])
 
   useEffect(() => {
     if (state === 'success' || state === 'positive') nodT.current = 0.0001
   }, [state])
+
+  const targetParticleColor = useMemo(() => new THREE.Color(controller.setState(state).glowColor), [state])
 
   useFrame((_, delta) => {
     const params = controller.setState(state)
@@ -208,6 +248,11 @@ function Face({ state, amplitudeRef, mouthShapeRef, isSpeaking, reducedMotion }:
       if (!eye) continue
       eye.rotation.y = THREE.MathUtils.damp(eye.rotation.y, gazeTarget.current.x, 4, delta)
       eye.rotation.x = THREE.MathUtils.damp(eye.rotation.x, gazeTarget.current.y, 4, delta)
+    }
+
+    if (particlesRef.current) {
+      particleColor.current.lerp(targetParticleColor, Math.min(1, delta * 2.5))
+      ;(particlesRef.current.material as THREE.PointsMaterial).color.copy(particleColor.current)
     }
 
     const group = groupRef.current
