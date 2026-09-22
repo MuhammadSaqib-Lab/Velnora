@@ -109,6 +109,40 @@ function Face({ state, amplitudeRef, mouthShapeRef, isSpeaking, reducedMotion }:
     // idea what AssistantState is, so every influence starts at rest and
     // is driven entirely by the useFrame loop below instead.
     headRef.current?.morphTargetInfluences.fill(0)
+
+    // This file's textures are KTX2/Basis-transcoded, and Basis transcode
+    // target format selection is GPU-dependent — it decoded fine in this
+    // project's own testing but came back blank/incorrect on at least one
+    // real deployed browser, which combined with this scene's environment
+    // lighting and a non-zero emissive/metalness fallback made the whole
+    // head render as a single blown-out white surface instead of skin.
+    // Rather than depend on that transcode succeeding identically on every
+    // GPU, every mesh gets an explicit, predictable material — the same
+    // result everywhere, not just on GPUs that happen to decode this file
+    // cleanly. The head's own diffuse/normal maps are dropped in favor of
+    // a flat, tuned skin tone; eyes/teeth keep their shape but get the
+    // same non-metallic, non-emissive, capped-reflection treatment.
+    gltf.scene.traverse((object) => {
+      const mesh = object as THREE.Mesh
+      if (!mesh.isMesh) return
+      const material = mesh.material as THREE.MeshStandardMaterial
+      if (!material || !('color' in material)) return
+
+      material.metalness = 0
+      material.envMapIntensity = 0.35
+      material.emissive?.set('#000000')
+      material.emissiveIntensity = 0
+
+      if (mesh === headRef.current) {
+        material.map = null
+        material.normalMap = null
+        material.roughness = 0.65
+        material.color.set('#c9a184')
+      } else {
+        material.roughness = Math.max(material.roughness ?? 0.5, 0.45)
+      }
+      material.needsUpdate = true
+    })
   }, [gltf])
 
   useEffect(() => {
@@ -259,8 +293,10 @@ export function GltfFaceAvatar({ state, amplitudeRef, mouthShapeRef, isSpeaking,
       camera={{ position: [0, 0.9, 3.5], fov: 45 }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
+        gl.toneMappingExposure = 0.9
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+        scene.environmentIntensity = 0.5
       }}
     >
       <ambientLight intensity={0.15} />
@@ -268,7 +304,7 @@ export function GltfFaceAvatar({ state, amplitudeRef, mouthShapeRef, isSpeaking,
       <Halo state={state} />
       {reducedMotion ? null : (
         <EffectComposer multisampling={0}>
-          <Bloom intensity={0.35} luminanceThreshold={0.75} luminanceSmoothing={0.3} mipmapBlur />
+          <Bloom intensity={0.3} luminanceThreshold={0.92} luminanceSmoothing={0.3} mipmapBlur />
           <Vignette offset={0.4} darkness={0.55} />
         </EffectComposer>
       )}
