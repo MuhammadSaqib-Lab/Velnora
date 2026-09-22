@@ -115,7 +115,7 @@ The architecture is ready for future SEO expansion (dedicated `/services/*`, `/i
 
 ## Third-party assets
 
-`public/models/facecap.glb` (the AI Assistant admin page's face) is a facial-capture rig by [Face Cap](https://www.bannaflak.com/face-cap), reused from three.js's own official `webgl_morphtargets_face` example (`examples/models/gltf/facecap.glb` in the [three.js repo](https://github.com/mrdoob/three.js), MIT-licensed project) under the same "model by Face Cap" attribution three.js itself displays.
+`public/models/facecap.glb` (the AI Assistant admin page's face) is a facial-capture rig by [Face Cap](https://www.bannaflak.com/face-cap), reused from three.js's own official `webgl_morphtargets_face` example (`examples/models/gltf/facecap.glb` in the [three.js repo](https://github.com/mrdoob/three.js), MIT-licensed project) under the same "model by Face Cap" attribution three.js itself displays. The file has been locally re-exported (same mesh, blendshapes, and texture — decoded once and re-embedded as a plain PNG instead of KTX2/Basis-compressed, with plain instead of meshopt-compressed geometry) after the original's Basis-compressed texture was found to decode blank on at least one real browser's GPU; see `src/components/internal/aiAssistant/avatar/GltfFaceAvatar.tsx`'s file header for the full story. No content was altered, only the encoding.
 
 ## License
 

@@ -1,11 +1,9 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { ProceduralExpressionController } from '../expressionController'
 import type { AvatarRendererProps } from './AvatarAdapter'
@@ -50,21 +48,29 @@ function isMorphMesh(object: THREE.Object3D | undefined): object is MorphMesh {
 
 /**
  * Deliberately not `useLoader` — its suspense-cache integration hung
- * indefinitely for this particular KTX2+meshopt-compressed file during
- * development (confirmed the identical GLTFLoader/KTX2Loader/Meshopt
- * setup resolves fine when driven manually outside React), so this
- * loads imperatively and surfaces success/failure as plain React state
+ * indefinitely for this file during development, so this loads
+ * imperatively and surfaces success/failure as plain React state
  * instead of relying on a Suspense boundary that never settled.
+ *
+ * public/models/facecap.glb is a plain, uncompressed re-export (see its
+ * generation note in the repo history): the original upstream asset
+ * used KTX2/Basis-compressed textures and meshopt-compressed geometry,
+ * and Basis transcode target format selection is GPU-dependent — it
+ * decoded fine in this project's own testing but came back blank on at
+ * least one real deployed browser, rendering the whole face as a single
+ * blown-out white surface. Re-exporting with the same decoded texture
+ * embedded as a plain PNG (no KTX2Loader/MeshoptDecoder needed at all
+ * now) trades ~325KB for ~2.1MB in exchange for identical, reliable
+ * rendering on every GPU — the right trade for a lazy-loaded,
+ * admin-only asset.
  */
 function useFaceCapGltf() {
-  const { gl } = useThree()
   const [gltf, setGltf] = useState<GLTF | null>(null)
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    const ktx2Loader = new KTX2Loader().setTranscoderPath('/basis/').detectSupport(gl)
-    const loader = new GLTFLoader().setKTX2Loader(ktx2Loader).setMeshoptDecoder(MeshoptDecoder)
+    const loader = new GLTFLoader()
     loader.load(
       MODEL_URL,
       (result) => {
@@ -77,9 +83,8 @@ function useFaceCapGltf() {
     )
     return () => {
       cancelled = true
-      ktx2Loader.dispose()
     }
-  }, [gl])
+  }, [])
 
   if (error) throw error
   return gltf
@@ -110,38 +115,29 @@ function Face({ state, amplitudeRef, mouthShapeRef, isSpeaking, reducedMotion }:
     // is driven entirely by the useFrame loop below instead.
     headRef.current?.morphTargetInfluences.fill(0)
 
-    // This file's textures are KTX2/Basis-transcoded, and Basis transcode
-    // target format selection is GPU-dependent — it decoded fine in this
-    // project's own testing but came back blank/incorrect on at least one
-    // real deployed browser, which combined with this scene's environment
-    // lighting and a non-zero emissive/metalness fallback made the whole
-    // head render as a single blown-out white surface instead of skin.
-    // Rather than depend on that transcode succeeding identically on every
-    // GPU, every mesh gets an explicit, predictable material — the same
-    // result everywhere, not just on GPUs that happen to decode this file
-    // cleanly. The head's own diffuse/normal maps are dropped in favor of
-    // a flat, tuned skin tone; eyes/teeth keep their shape but get the
-    // same non-metallic, non-emissive, capped-reflection treatment.
+    // The model's own baked texture (a real, verified-intact 1024x1024
+    // diffuse map — see the re-export note above) carries all the actual
+    // facial detail — eyebrows, lip line, cheek color, socket shading —
+    // and is deliberately never removed or replaced. But on its own it's
+    // a notably low-saturation, neutral-grey capture-rig texture (this
+    // rig was built for motion/blendshape capture, not as a finished
+    // character asset), which combined with fully-matte roughness (1,
+    // authored in the source file) and pure image-based lighting reads
+    // as flat and mannequin-like. Two small, honest adjustments — a
+    // gentle warm multiply tint (shifts the existing texture's color
+    // balance without hiding or repainting it) and a touch less
+    // roughness (a little real specular life instead of a totally dead-
+    // matte surface) — combined with the key/fill/rim lights below, are
+    // what make it read as skin rather than plaster.
     gltf.scene.traverse((object) => {
       const mesh = object as THREE.Mesh
-      if (!mesh.isMesh) return
       const material = mesh.material as THREE.MeshStandardMaterial
-      if (!material || !('color' in material)) return
-
-      material.metalness = 0
-      material.envMapIntensity = 0.35
-      material.emissive?.set('#000000')
-      material.emissiveIntensity = 0
-
+      if (!mesh.isMesh || !material || !('envMapIntensity' in material)) return
+      material.envMapIntensity = 0.45
       if (mesh === headRef.current) {
-        material.map = null
-        material.normalMap = null
-        material.roughness = 0.65
-        material.color.set('#c9a184')
-      } else {
-        material.roughness = Math.max(material.roughness ?? 0.5, 0.45)
+        material.color.set('#ffdcc2')
+        material.roughness = 0.8
       }
-      material.needsUpdate = true
     })
   }, [gltf])
 
@@ -293,13 +289,22 @@ export function GltfFaceAvatar({ state, amplitudeRef, mouthShapeRef, isSpeaking,
       camera={{ position: [0, 0.9, 3.5], fov: 45 }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 0.9
+        gl.toneMappingExposure = 1.05
         const pmrem = new THREE.PMREMGenerator(gl)
         scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-        scene.environmentIntensity = 0.5
+        scene.environmentIntensity = 0.55
       }}
     >
-      <ambientLight intensity={0.15} />
+      <ambientLight intensity={0.2} />
+      {/* Portrait-style key/fill so facial structure (nose bridge, cheekbones,
+          brow ridge, chin) actually reads via shadow/highlight contouring —
+          pure image-based lighting alone renders too flat. The rim light is
+          the ONLY place the brand's emerald accent touches the face itself,
+          kept low and positioned behind/aside so it grazes the silhouette
+          edge rather than washing across it. */}
+      <directionalLight position={[0.6, 1.3, 1.6]} intensity={1.15} color="#fff2e2" />
+      <directionalLight position={[-1, 0.2, 1]} intensity={0.3} color="#dce8ff" />
+      <pointLight position={[-1.3, 0.6, -1.4]} intensity={0.5} color="#34d399" />
       <Face state={state} amplitudeRef={amplitudeRef} mouthShapeRef={mouthShapeRef} isSpeaking={isSpeaking} reducedMotion={reducedMotion} />
       <Halo state={state} />
       {reducedMotion ? null : (
