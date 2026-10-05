@@ -86,6 +86,11 @@ const envSchema = z.object({
   ELEVENLABS_VOICE_ID: z.string().min(1).default('21m00Tcm4TlvDq8ikWAM'),
   AI_ASSISTANT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
   AI_ASSISTANT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(15),
+
+  // Admin Dashboard → Agent Settings writes (save/restore rules and
+  // instructions for the Customer Handler and Lead Finder agents).
+  AGENT_CONFIG_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
+  AGENT_CONFIG_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
 })
 
 function loadEnv() {

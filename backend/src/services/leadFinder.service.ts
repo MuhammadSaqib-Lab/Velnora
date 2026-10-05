@@ -11,6 +11,7 @@ import { extractDomain, findExistingLead } from '../leadFinder/dedupe.js'
 import { mapWithConcurrency } from '../leadFinder/concurrency.js'
 import { generateOutreachEmail, EmailGenerationError } from '../leadFinder/email/generateEmail.js'
 import { createDraft, isGmailReadyToDraft } from '../leadFinder/gmail/GmailProvider.js'
+import { assertAgentEnabled } from './agentConfig.service.js'
 
 const searchProvider = new GooglePlacesProvider()
 const RESEARCH_CONCURRENCY = 5
@@ -78,6 +79,7 @@ function toJsonInput(value: unknown): Prisma.InputJsonValue {
 }
 
 export async function searchAndResearchLeads(params: SearchLeadsParams) {
+  await assertAgentEnabled('LEAD_FINDER')
   const configured = await searchProvider.healthCheck()
   if (!configured) {
     throw new AppError(503, NO_PROVIDER_CONFIGURED_MESSAGE)
@@ -176,6 +178,7 @@ async function persistResearchedLead(result: ResearchedCandidate) {
 }
 
 export async function reanalyzeLead(id: string) {
+  await assertAgentEnabled('LEAD_FINDER')
   const lead = await getLeadOrThrow(id)
 
   const hasWebsite = Boolean(lead.website)
@@ -328,6 +331,9 @@ export async function getLeadWithScoreBreakdown(id: string) {
 }
 
 export async function generateEmailForLead(id: string) {
+  // This agent's own editable behavior only (never the Customer Handler's);
+  // also the kill switch: a disabled Lead Finder generates nothing.
+  const agentConfig = await assertAgentEnabled('LEAD_FINDER')
   const lead = await getLeadOrThrow(id)
 
   if (!lead.email) {
@@ -346,6 +352,7 @@ export async function generateEmailForLead(id: string) {
   let generated
   try {
     generated = await generateOutreachEmail({
+      agentConfig,
       businessName: lead.businessName,
       category: lead.category ?? undefined,
       location: lead.location ?? undefined,
@@ -373,6 +380,7 @@ export async function generateEmailForLead(id: string) {
 }
 
 export async function createDraftForLead(id: string, force = false) {
+  await assertAgentEnabled('LEAD_FINDER')
   const lead = await getLeadOrThrow(id)
 
   if (!lead.email) {

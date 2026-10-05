@@ -118,6 +118,14 @@ enum ReviewStatus {
   REJECTED
 }
 
+/// Fixed allowlist of agents whose editable behavior lives in AgentConfig.
+/// Never derived from request input — routes are bound to exactly one
+/// value each (see backend/src/routes/adminAgentConfig.routes.ts).
+enum AgentKey {
+  CUSTOMER_HANDLER
+  LEAD_FINDER
+}
+
 /// Prepared for Phase 3 (authentication). Not used by any endpoint yet.
 model User {
   id           String   @id @default(cuid())
@@ -319,6 +327,58 @@ model QualifiedLead {
   @@index([status])
   @@index([createdAt])
   @@map("qualified_leads")
+}
+
+/// The single source of truth for an agent's EDITABLE behavior (rules +
+/// instructions), managed from the Admin Dashboard. Exactly one row per
+/// AgentKey. This is behavioral configuration only — it can never grant a
+/// permission: tool access, authorization, rate limits, email-sending
+/// restrictions and the confidentiality/anti-injection policy are
+/// enforced in backend code (backend/src/agentConfig/policies/) and are
+/// always composed in ABOVE whatever is stored here.
+/// `version` increments on every change and doubles as the optimistic-
+/// concurrency token for the update endpoint. `updatedBy` is the admin's
+/// email at the time (a snapshot, so it survives the account being
+/// removed).
+model AgentConfig {
+  id           String   @id @default(cuid())
+  agentKey     AgentKey @unique
+  displayName  String
+  rules        String
+  instructions String
+  enabled      Boolean  @default(true)
+  version      Int      @default(1)
+  updatedBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  history      AgentConfigVersion[]
+
+  @@map("agent_configs")
+}
+
+/// Append-only audit trail: one immutable snapshot per AgentConfig
+/// version (the NEW state after that change; the "old" state is simply
+/// the previous version's row). Holds only the configuration text and who
+/// changed it — never customer/lead data, never secrets.
+model AgentConfigVersion {
+  id            String      @id @default(cuid())
+  agentConfigId String
+  agentKey      AgentKey
+  version       Int
+  rules         String
+  instructions  String
+  enabled       Boolean
+  /// SEEDED | UPDATED | RESTORED
+  changeType    String
+  changedBy     String?
+  createdAt     DateTime    @default(now())
+
+  agentConfig   AgentConfig @relation(fields: [agentConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([agentKey, version])
+  @@index([agentConfigId])
+  @@map("agent_config_versions")
 }
 
 /// Public-facing client reviews (the "What Our Clients Say" section).

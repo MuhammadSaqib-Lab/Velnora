@@ -21,6 +21,18 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return
   }
 
+  // body-parser (express.json) failures are client errors, not server bugs.
+  const bodyParserError = (err as { type?: string } | null)?.type
+  if (bodyParserError === 'entity.too.large' || bodyParserError === 'entity.parse.failed') {
+    const tooLarge = bodyParserError === 'entity.too.large'
+    const response: ApiError = {
+      success: false,
+      message: tooLarge ? 'The request is too large.' : 'The request body is not valid JSON.',
+    }
+    res.status(tooLarge ? 413 : 400).json(response)
+    return
+  }
+
   logger.error('request.unhandled_error', err, { path: req.path, method: req.method })
 
   const response: ApiError = {

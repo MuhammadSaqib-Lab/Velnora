@@ -90,6 +90,26 @@ export const aiAssistantRateLimiter = rateLimit({
 })
 
 /**
+ * Applied to the Admin Dashboard's agent-configuration writes (save,
+ * restore). Admin-only and low-volume by nature; this just bounds a
+ * runaway client or a stolen-session script from churning the audit
+ * history of settings that directly steer AI behavior.
+ */
+export const agentConfigWriteRateLimiter = rateLimit({
+  windowMs: env.AGENT_CONFIG_RATE_LIMIT_WINDOW_MS,
+  limit: env.AGENT_CONFIG_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => {
+    const response: ApiError = {
+      success: false,
+      message: 'Too many configuration changes. Please wait a moment and try again.',
+    }
+    res.status(429).json(response)
+  },
+})
+
+/**
  * Applied only to POST /api/auth/admin/login — the primary brute-force
  * defense, since there is no per-account lockout (see
  * adminAuth.service.ts's loginAdmin for why: an account-level lockout

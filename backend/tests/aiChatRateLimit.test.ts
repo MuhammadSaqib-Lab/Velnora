@@ -1,4 +1,5 @@
 import request from 'supertest'
+import { createAgentConfigTables } from './helpers/agentConfigTables.js'
 import { describe, expect, it, vi } from 'vitest'
 
 // Set a small, deterministic limit before anything imports env.ts, so
@@ -20,6 +21,7 @@ vi.mock('../src/ai/providers/AnthropicProvider.js', () => ({
 vi.mock('../src/database/prisma.js', () => ({
   prisma: {
     $queryRaw: vi.fn(),
+    ...createAgentConfigTables(),
     aIConversation: {
       findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({

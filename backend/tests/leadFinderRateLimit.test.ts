@@ -1,4 +1,5 @@
 import request from 'supertest'
+import { createAgentConfigTables } from './helpers/agentConfigTables.js'
 import { describe, expect, it, vi } from 'vitest'
 
 process.env.LEAD_FINDER_ADMIN_TOKEN = 'test-admin-token'
@@ -12,7 +13,7 @@ vi.mock('../src/leadFinder/providers/GooglePlacesProvider.js', () => ({
   },
 }))
 vi.mock('../src/database/prisma.js', () => ({
-  prisma: { $queryRaw: vi.fn(), lead: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() } },
+  prisma: { $queryRaw: vi.fn(), ...createAgentConfigTables(), lead: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() } },
 }))
 
 const { createApp } = await import('../src/app.js')

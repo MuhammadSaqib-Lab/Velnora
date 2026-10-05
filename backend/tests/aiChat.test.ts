@@ -1,5 +1,6 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAgentConfigTables } from './helpers/agentConfigTables.js'
 import { saveLeadTool } from '../src/ai/tools/saveLead.tool.js'
 
 // This file sends more requests than the production rate limit default
@@ -20,6 +21,7 @@ vi.mock('../src/ai/providers/AnthropicProvider.js', () => ({
 vi.mock('../src/database/prisma.js', () => ({
   prisma: {
     $queryRaw: vi.fn(),
+    ...createAgentConfigTables(),
     aIConversation: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     aIMessage: { count: vi.fn().mockResolvedValue(0), create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     qualifiedLead: { create: vi.fn() },

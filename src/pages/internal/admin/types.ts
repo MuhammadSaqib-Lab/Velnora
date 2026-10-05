@@ -143,3 +143,27 @@ export interface AdminOverview {
     recentOutreach: Array<Pick<LeadFinderLead, 'id' | 'businessName' | 'emailSubject' | 'gmailDraftId' | 'status' | 'updatedAt'>>
   }
 }
+
+export type AgentSlug = 'customer-handler' | 'lead-finder'
+
+export interface AgentConfig {
+  agentKey: 'CUSTOMER_HANDLER' | 'LEAD_FINDER'
+  displayName: string
+  rules: string
+  instructions: string
+  enabled: boolean
+  version: number
+  updatedBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AgentConfigVersion {
+  version: number
+  rules: string
+  instructions: string
+  enabled: boolean
+  changeType: 'SEEDED' | 'UPDATED' | 'RESTORED' | string
+  changedBy: string | null
+  createdAt: string
+}

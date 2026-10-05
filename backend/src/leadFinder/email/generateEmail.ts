@@ -47,6 +47,8 @@ function buildResearchPayload(params: {
 }
 
 export async function generateOutreachEmail(params: {
+  /** The Lead Finder's own editable behavior, loaded by the caller from its AgentConfig row. */
+  agentConfig: { instructions: string; rules: string }
   businessName: string
   category?: string
   location?: string
@@ -61,7 +63,7 @@ export async function generateOutreachEmail(params: {
   let result
   try {
     result = await provider.generateResponse({
-      system: buildEmailSystemPrompt(),
+      system: buildEmailSystemPrompt(params.agentConfig),
       messages: [{ role: 'user', content: JSON.stringify(payload) }],
       effort: env.LEAD_EMAIL_AI_EFFORT,
       maxTokens: 800,

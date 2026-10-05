@@ -2,6 +2,7 @@ import { createApp } from './app.js'
 import { env } from './config/env.js'
 import { prisma } from './database/prisma.js'
 import { bootstrapInitialAdminUser } from './services/adminAuth.service.js'
+import { bootstrapAgentConfigs } from './services/agentConfig.service.js'
 import { logger } from './utils/logger.js'
 
 const app = createApp()
@@ -15,6 +16,16 @@ async function start() {
     await bootstrapInitialAdminUser()
   } catch (error) {
     logger.error('admin.bootstrap.failed', error)
+  }
+
+  // Same non-fatal reasoning. Seeds each agent's editable behavior from the
+  // bootstrap defaults only if its row is missing; existing rows (and
+  // anything an admin saved) are never touched. A missed run is harmless —
+  // the runtime creates the row lazily on first use.
+  try {
+    await bootstrapAgentConfigs()
+  } catch (error) {
+    logger.error('agent_config.bootstrap.failed', error)
   }
 
   const server = app.listen(env.PORT, () => {

@@ -16,6 +16,7 @@ function textResult(text: string) {
 }
 
 const BASE_PARAMS = {
+  agentConfig: { instructions: 'You write outreach emails for Velnora.', rules: '- Keep it short.' },
   businessName: 'Acme Dental',
   category: 'Dentist',
   location: 'Lahore, Pakistan',

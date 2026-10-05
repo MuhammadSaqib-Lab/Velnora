@@ -32,6 +32,7 @@ const LeadFinderLeadDetail = lazy(() =>
   import('@/pages/internal/admin/LeadFinderLeadDetail').then((m) => ({ default: m.LeadFinderLeadDetail })),
 )
 const AdminReviews = lazy(() => import('@/pages/internal/admin/Reviews').then((m) => ({ default: m.Reviews })))
+const AgentSettings = lazy(() => import('@/pages/internal/admin/AgentSettings').then((m) => ({ default: m.AgentSettings })))
 const AiAssistant = lazy(() => import('@/pages/internal/admin/AiAssistant').then((m) => ({ default: m.AiAssistant })))
 
 function PublicChrome({ children }: { children: React.ReactNode }) {
@@ -90,6 +91,7 @@ export default function App() {
                 <Route path="lead-finder" element={<LeadFinderLeads />} />
                 <Route path="lead-finder/:id" element={<LeadFinderLeadDetail />} />
                 <Route path="reviews" element={<AdminReviews />} />
+                <Route path="agent-settings" element={<AgentSettings />} />
                 <Route path="ai-assistant" element={<AiAssistant />} />
               </Route>
               <Route path="*" element={<NotFound />} />

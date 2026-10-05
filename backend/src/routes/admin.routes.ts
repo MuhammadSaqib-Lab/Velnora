@@ -8,6 +8,7 @@ import {
   patchClientLeadStatus,
 } from '../controllers/adminClientLeads.controller.js'
 import { deleteReviewById, getAdminReviews, patchReviewStatus } from '../controllers/adminReviews.controller.js'
+import { adminAgentConfigRouter } from './adminAgentConfig.routes.js'
 import { aiAssistantRateLimiter } from '../middleware/rateLimiter.js'
 import { requireAdminSession } from '../middleware/requireAdminSession.js'
 import { validateBody } from '../middleware/validateBody.js'
@@ -40,6 +41,11 @@ export const adminRouter = Router()
 adminRouter.use(requireAdminSession())
 
 adminRouter.get('/overview', asyncHandler(getAdminOverview))
+
+// Editable behavior (rules/instructions) of the Customer Handler and Lead
+// Finder agents — configuration only, never permissions. See
+// adminAgentConfig.routes.ts.
+adminRouter.use('/agents', adminAgentConfigRouter)
 
 adminRouter.get('/client-leads', validateQuery(clientLeadListQuerySchema), asyncHandler(getClientLeads))
 adminRouter.get('/client-leads/:id', asyncHandler(getClientLeadById))

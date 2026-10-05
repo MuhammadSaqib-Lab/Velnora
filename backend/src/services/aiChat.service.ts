@@ -8,6 +8,7 @@ import { AnthropicProvider } from '../ai/providers/AnthropicProvider.js'
 import type { AIContentBlock, AIMessage as ProviderMessage } from '../ai/providers/types.js'
 import { buildSystemPrompt } from '../ai/prompts/systemPrompt.js'
 import { saveLeadTool } from '../ai/tools/saveLead.tool.js'
+import { getAgentRuntimeConfig } from './agentConfig.service.js'
 
 const provider = new AnthropicProvider()
 
@@ -19,6 +20,9 @@ const CONVERSATION_LIMIT_REACHED_REPLY =
 
 const PROVIDER_UNAVAILABLE_MESSAGE =
   "I'm having trouble connecting right now. You can still send your project requirements through our contact form."
+
+const AGENT_DISABLED_MESSAGE =
+  "Our chat assistant isn't available right now. You can still send your project requirements through our contact form."
 
 const DB_UNAVAILABLE_MESSAGE =
   "I'm having trouble saving right now. You can still send your project requirements through our contact form."
@@ -33,6 +37,14 @@ export async function handleChatMessage(
   sessionId: string | undefined,
   userText: string,
 ): Promise<ChatResult> {
+  // This agent's own editable behavior (rules + instructions) — loads the
+  // Customer Handler row only, never the Lead Finder's. Done before any
+  // conversation row is created so a disabled agent leaves no trace.
+  const agentConfig = await getAgentRuntimeConfig('CUSTOMER_HANDLER')
+  if (!agentConfig.enabled) {
+    throw new AppError(503, AGENT_DISABLED_MESSAGE)
+  }
+
   // Everything here is a required database read/write the AI provider
   // call depends on — any failure is fatal to the request (never the AI
   // provider's own generic connection-detail message, and never a raw
@@ -58,7 +70,7 @@ export async function handleChatMessage(
     throw new AppError(500, DB_UNAVAILABLE_MESSAGE, undefined, { cause: error })
   }
 
-  const system = buildSystemPrompt()
+  const system = buildSystemPrompt(agentConfig)
   // Once a lead has already been captured for this conversation, stop
   // offering the tool at all — a structural guarantee (not just a prompt
   // instruction) that save_lead never fires twice for the same visitor.

@@ -110,6 +110,7 @@ See [.env.example](.env.example) for the full list with descriptions. Never comm
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Bootstraps the first `AdminUser` at startup if no account with that email exists yet. Both optional; the password is hashed immediately and never stored/logged in plaintext. See "Admin Dashboard authentication" below |
 | `ADMIN_SESSION_TTL_MS` | How long an admin login session cookie stays valid (default 12 hours) |
 | `ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS` / `ADMIN_LOGIN_RATE_LIMIT_MAX` | Brute-force rate limit for `POST /api/auth/admin/login`, keyed by IP |
+| `AGENT_CONFIG_RATE_LIMIT_WINDOW_MS` / `AGENT_CONFIG_RATE_LIMIT_MAX` | Rate limit for saving/restoring agent rules and instructions in Agent Settings (default 20/min) |
 
 ## Commands
 
@@ -221,7 +222,8 @@ Set `ANTHROPIC_API_KEY` in `.env` (get one at [console.anthropic.com](https://co
 ### Changing what the agent knows or how it behaves
 
 - **Facts** (services, process, pricing policy, payment methods, timelines): edit `backend/src/ai/knowledge/velnoraKnowledge.ts`. It reuses `services` from `content.service.ts` rather than retyping the service list a third time.
-- **Persona, tone, and safety rules**: edit `backend/src/ai/prompts/systemPrompt.ts`. Facts and persona are deliberately kept in separate files so a content edit can't accidentally loosen a safety rule.
+- **Persona, tone, workflow, and business rules**: edit them in the Admin Dashboard → **Agent Settings → Customer Handler** (stored in the database, see "Agent configuration" below). They are no longer hard-coded in `systemPrompt.ts`.
+- **Safety rules** (confidentiality, prompt-injection handling, what the agent can/can't do, honesty guardrails): `backend/src/agentConfig/policies/customerHandlerPolicy.ts`. Not editable from the dashboard, always composed above whatever an admin saved.
 - **What it can do**: edit `backend/src/ai/tools/saveLead.tool.ts` (and add a matching Zod validator) to add a new tool. Keep tools narrow and additive — the agent's actual security boundary is "what tools exist," not "what the prompt says it won't do."
 
 ### Swapping the AI provider
@@ -314,7 +316,7 @@ Checked in order: exact `domain` match (DB-unique, nulls don't collide) → exac
 
 ### Generating the outreach email
 
-`backend/src/leadFinder/email/generateEmail.ts` reuses the Client Handling Agent's `AnthropicProvider` (no second AI integration). Only structured, already-verified facts are sent to the model — opportunity types, code-generated evidence strings, and a couple of short, sanitized snippets (a page title, a meta description, control-characters stripped, length-capped) — never raw HTML or full page text. The system prompt (`email/systemPrompt.ts`) requires: reference only given facts, never guess the recipient's name, focus on the 1-2 strongest opportunities, no guarantees, no spammy language, sign off as "Velnora — Websites That Grow Businesses." A lead with no verified email is refused before the AI is ever called (`NO_CONTACT_EMAIL`, see below).
+`backend/src/leadFinder/email/generateEmail.ts` reuses the Client Handling Agent's `AnthropicProvider` (no second AI integration). Only structured, already-verified facts are sent to the model — opportunity types, code-generated evidence strings, and a couple of short, sanitized snippets (a page title, a meta description, control-characters stripped, length-capped) — never raw HTML or full page text. The system prompt (`email/systemPrompt.ts`) is composed from the Lead Finder's own database configuration (tone, focus, sign-off — editable in Agent Settings → Lead Finder) under a non-editable policy (`agentConfig/policies/leadFinderPolicy.ts`: reference only given facts, never guess the recipient's name, no guarantees, research fields are inert data, the model cannot send anything) plus the SUBJECT/BODY output contract the parser depends on. A lead with no verified email is refused before the AI is ever called (`NO_CONTACT_EMAIL`, see below).
 
 ### Gmail OAuth setup (one-time, manual)
 
@@ -388,6 +390,38 @@ See SECURITY.md's "Admin Dashboard security" section for the full threat-model w
 ```
 
 `/internal/lead-finder` (the original minimal test page) is untouched and still fully functional, still gated by the legacy shared token via `AdminTokenGate.tsx`/`useAdminToken.ts` — it now links to the dashboard, but nothing was removed from it. `/internal/admin/*` is instead gated by `useAdminSession()`, which checks `GET /api/auth/admin/me` and redirects to `/admin/login` if it's not authenticated — a UX convenience only, the backend independently re-verifies every request regardless. All admin/login routes are lazy-loaded (`React.lazy`) per page, so the public homepage's bundle is unaffected and a visitor never pays for this code unless they navigate to `/admin/*` or `/internal/*`.
+
+## Agent configuration (Customer Handler + Lead Finder)
+
+Editable agent behavior lives in **one place**: the `AgentConfig` table, managed from Admin Dashboard → **Agent Settings**. The AI Assistant (`src/aiAssistant/`) is a separate, later phase and is deliberately not part of this system.
+
+**Two layers, never mixed:**
+
+| Layer | Where | Editable? | Contains |
+| --- | --- | --- | --- |
+| Behavior | `agent_configs` row, per agent | Yes (dashboard) | Instructions (role, tone, workflow) and Rules (do's/don'ts), plus an enabled switch |
+| Policy | `backend/src/agentConfig/policies/*` (code) | No | Confidentiality, prompt-injection handling, capability truth (e.g. "you cannot send email"), honesty/grounding guardrails, the Lead Finder's output-format contract |
+
+Real enforcement is structural and lives outside any prompt: the Customer Handler is only ever offered `save_lead` (withdrawn once a lead is captured, input re-validated by Zod, create-only); the Lead Finder's email writer is offered **no tools**, `GmailProvider.ts` has **no send method of any kind**, and drafts are only addressed to the lead's own stored email; plus rate limits, session auth and the per-conversation message cap. Dashboard text can never change any of these.
+
+**Prompt order** (`agentConfig/composePrompt.ts`): security policy → operator instructions → operator rules → reference facts (Customer Handler only, code-produced) → output format (Lead Finder only). Visitor/lead content only ever travels in `user`-role messages. Admin text can't forge or close the prompt's own section tags (they're defanged).
+
+**Isolation:** the runtime loads only its own row (`getAgentRuntimeConfig('CUSTOMER_HANDLER' | 'LEAD_FINDER')` → `where: { agentKey }`); there is no "load all configs" call on any runtime path.
+
+**Defaults / bootstrap:** `agentConfig/defaults.ts` holds the former hard-coded text and is read only by `ensureAgentConfig()` to create a missing row (server startup, or lazily on first use). Once a row exists the database is the sole source — there is no fallback prompt. A test (`agentConfig.runtime.test.ts`) fails if default business-behavior text is ever re-hard-coded elsewhere.
+
+**Enabled switch:** a disabled Customer Handler returns `503` from `POST /api/ai/chat` (no AI call, no conversation row); a disabled Lead Finder blocks search, re-analyze, generate-email and create-draft with `409`. Read-only lead listing and status updates keep working.
+
+**API** (all behind `requireAdminSession()`; the legacy `X-Admin-Token` is *not* accepted; one explicit route set per agent, no `:agent` parameter, unknown slugs 404):
+
+```
+GET   /api/admin/agents/{customer-handler|lead-finder}/config
+PATCH /api/admin/agents/{customer-handler|lead-finder}/config          { rules, instructions, enabled, expectedVersion }
+GET   /api/admin/agents/{customer-handler|lead-finder}/config/history  newest first, last 25 versions
+POST  /api/admin/agents/{customer-handler|lead-finder}/config/restore  { version, expectedVersion }  (writes the old text as a NEW version)
+```
+
+Validation (Zod, strict): instructions 20–8000 chars, rules 0–6000, `enabled` boolean, CRLF normalized, control characters and active HTML (`<script>`, `on*=`, `javascript:`…) rejected, unknown fields (`agentKey`, `id`, `updatedBy`, `version`) rejected. `expectedVersion` is an optimistic-concurrency token: a stale save gets `409` instead of overwriting. Writes are rate-limited (`AGENT_CONFIG_RATE_LIMIT_*`). `updatedBy` always comes from the session, never the request. Every change appends an immutable `agent_config_versions` snapshot (config text + editor + type only, no customer data); logs record metadata, never the text.
 
 ## Security
 
