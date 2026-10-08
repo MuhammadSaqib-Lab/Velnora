@@ -12,6 +12,7 @@ import { deleteReviewById, getAdminReviews, patchReviewStatus } from '../control
 import { adminAgentConfigRouter } from './adminAgentConfig.routes.js'
 import { aiAssistantRateLimiter } from '../middleware/rateLimiter.js'
 import { requireAdminSession } from '../middleware/requireAdminSession.js'
+import { requireAiAssistantEnabled } from '../middleware/requireAiAssistantEnabled.js'
 import { validateBody } from '../middleware/validateBody.js'
 import { validateQuery } from '../middleware/validateQuery.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
@@ -68,18 +69,24 @@ adminRouter.get('/reviews', validateQuery(adminReviewListQuerySchema), asyncHand
 adminRouter.patch('/reviews/:id/status', validateBody(reviewStatusUpdateSchema), asyncHandler(patchReviewStatus))
 adminRouter.delete('/reviews/:id', asyncHandler(deleteReviewById))
 
+// AI Assistant — TEMPORARILY DISABLED (AI_ASSISTANT_ENABLED, default off; see
+// aiAssistant/featureFlag.ts). The routes stay registered, still behind the
+// admin session above, but the gate answers 503 "AI Assistant is currently
+// disabled." before the rate limiter, validation or any assistant code runs.
 // AI Assistant: voice/text console that previews Lead Finder Agent
 // actions without executing them (see orchestrator.service.ts). Both
 // endpoints cost real money per call (Claude, and ElevenLabs for
 // /speak), hence the rate limiter on top of the router-wide session gate.
 adminRouter.post(
   '/ai-assistant/command',
+  requireAiAssistantEnabled(),
   aiAssistantRateLimiter,
   validateBody(assistantCommandSchema),
   asyncHandler(postAssistantCommand),
 )
 adminRouter.post(
   '/ai-assistant/speak',
+  requireAiAssistantEnabled(),
   aiAssistantRateLimiter,
   validateBody(assistantSpeakSchema),
   asyncHandler(postAssistantSpeak),

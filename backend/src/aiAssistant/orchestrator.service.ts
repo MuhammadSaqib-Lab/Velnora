@@ -3,6 +3,7 @@ import { AnthropicProvider } from '../ai/providers/AnthropicProvider.js'
 import type { AIContentBlock, AIMessage } from '../ai/providers/types.js'
 import { AppError } from '../utils/AppError.js'
 import { logger } from '../utils/logger.js'
+import { assertAiAssistantEnabled } from './featureFlag.js'
 import { buildAssistantSystemPrompt } from './systemPrompt.js'
 import { simulateAgentActionTool } from './tools/simulateAgentAction.tool.js'
 
@@ -51,6 +52,9 @@ export async function handleAssistantCommand(
   history: AIMessage[],
   userText: string,
 ): Promise<AssistantResult> {
+  // Layer 3 of the kill switch: refuse even if a caller bypassed the route
+  // gate and controller check.
+  assertAiAssistantEnabled()
   const boundedHistory = history.slice(-MAX_HISTORY_MESSAGES)
   const messages: AIMessage[] = [...boundedHistory, { role: 'user', content: userText }]
   const system = buildAssistantSystemPrompt()

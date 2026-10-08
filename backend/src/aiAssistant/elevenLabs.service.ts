@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { AppError } from '../utils/AppError.js'
+import { assertAiAssistantEnabled } from './featureFlag.js'
 
 const ELEVENLABS_TTS_URL = 'https://api.elevenlabs.io/v1/text-to-speech'
 
@@ -21,6 +22,8 @@ export interface SpeechResult {
  * Assistant capability (text commands) keeps working normally.
  */
 export async function synthesizeSpeech(text: string): Promise<SpeechResult> {
+  // Layer 3 of the kill switch: no outbound ElevenLabs call while disabled.
+  assertAiAssistantEnabled()
   if (!env.ELEVENLABS_API_KEY) {
     throw new AppError(503, 'Voice output is not configured yet — add ELEVENLABS_API_KEY to enable it.')
   }

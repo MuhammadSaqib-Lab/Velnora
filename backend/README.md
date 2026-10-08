@@ -110,6 +110,7 @@ See [.env.example](.env.example) for the full list with descriptions. Never comm
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Bootstraps the first `AdminUser` at startup if no account with that email exists yet. Both optional; the password is hashed immediately and never stored/logged in plaintext. See "Admin Dashboard authentication" below |
 | `ADMIN_SESSION_TTL_MS` | How long an admin login session cookie stays valid (default 12 hours) |
 | `ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS` / `ADMIN_LOGIN_RATE_LIMIT_MAX` | Brute-force rate limit for `POST /api/auth/admin/login`, keyed by IP |
+| `AI_ASSISTANT_ENABLED` | AI Assistant kill switch — **`false` by default** (temporarily disabled); `true`/`false` only. Server-side only. See "AI Assistant (temporarily disabled)" |
 | `CLIENT_SESSION_TTL_MS` | Client Portal session lifetime (default 7 days) |
 | `CLIENT_LOGIN_RATE_LIMIT_*` / `CLIENT_REGISTER_RATE_LIMIT_*` / `CLIENT_PROJECT_RATE_LIMIT_*` | `_WINDOW_MS` / `_MAX` per IP for client login (10/15min), sign-up (5/hour) and project submission (10/hour) |
 | `AGENT_CONFIG_RATE_LIMIT_WINDOW_MS` / `AGENT_CONFIG_RATE_LIMIT_MAX` | Rate limit for saving/restoring agent rules and instructions in Agent Settings (default 20/min) |
@@ -392,6 +393,36 @@ See SECURITY.md's "Admin Dashboard security" section for the full threat-model w
 ```
 
 `/internal/lead-finder` (the original minimal test page) is untouched and still fully functional, still gated by the legacy shared token via `AdminTokenGate.tsx`/`useAdminToken.ts` — it now links to the dashboard, but nothing was removed from it. `/internal/admin/*` is instead gated by `useAdminSession()`, which checks `GET /api/auth/admin/me` and redirects to `/admin/login` if it's not authenticated — a UX convenience only, the backend independently re-verifies every request regardless. All admin/login routes are lazy-loaded (`React.lazy`) per page, so the public homepage's bundle is unaffected and a visitor never pays for this code unless they navigate to `/admin/*` or `/internal/*`.
+
+## AI Assistant (temporarily disabled)
+
+The Admin Dashboard's AI Assistant / Command Center / voice console is **TEMPORARILY DISABLED** and has no runtime role. Its code is intentionally kept intact for a future phase. The Customer Handler and Lead Finder agents never depended on it and are unaffected.
+
+**What is disabled, and where**
+
+| Layer | Where | State while disabled |
+| --- | --- | --- |
+| Kill switch | `AI_ASSISTANT_ENABLED` env var → `backend/src/aiAssistant/featureFlag.ts` | defaults to **off**; only the literal `true`/`false` are accepted |
+| Route gate | `middleware/requireAiAssistantEnabled.ts`, mounted in `routes/admin.routes.ts` on `POST /api/admin/ai-assistant/command` and `POST /api/admin/ai-assistant/speak` | after the admin-session gate, before the rate limiter and validation: `503 { "success": false, "message": "AI Assistant is currently disabled." }` for every body |
+| Controller | `controllers/adminAiAssistant.controller.ts` | re-checks the flag and only `import()`s the orchestrator / ElevenLabs modules once it passes — while off they are never loaded or initialized |
+| Services | `aiAssistant/orchestrator.service.ts`, `aiAssistant/elevenLabs.service.ts` | refuse on their own (no AI-provider call, no outbound ElevenLabs request) even if called directly |
+| Frontend UI | `src/config/features.ts` (`AI_ASSISTANT_ENABLED = false`) | no nav entry (desktop or mobile drawer), no route (`/internal/admin/ai-assistant` redirects to the overview), page code never requested by the app |
+| Permissions-Policy | root `vercel.json` | `microphone=()` (was `(self)` for voice input; nothing else uses the mic) |
+
+There are no assistant websockets, streaming endpoints, background jobs or database tables (history was always client-sent), so nothing else needs disabling and no data is touched. Not part of the assistant, still active: Customer Handler (`POST /api/ai/chat`), Lead Finder (`/api/leads/*`), Agent Settings, Client Portal, and every other dashboard page.
+
+**Preserved (do not delete):** `backend/src/aiAssistant/` (orchestrator, ElevenLabs TTS, system prompt, `simulate_agent_action` tool), `validators/aiAssistant.validator.ts`, `AI_ASSISTANT_RATE_LIMIT_*` / `ELEVENLABS_*` env settings, `src/pages/internal/admin/AiAssistant.tsx`, `src/components/internal/aiAssistant/` (avatar, speech recognition, mic meter, orchestration UI), `public/models/facecap.glb`.
+
+**Security notes while disabled:** the flag is deployment configuration only — there is deliberately no `VITE_`/public counterpart and no request can read or set it; the frontend constant only hides UI (the backend is the enforcement). The endpoints stay behind the admin session (an unauthenticated caller still gets a plain 401). Leave `ELEVENLABS_API_KEY` unset in production until the assistant returns — nothing uses it while off.
+
+**To reactivate later (all steps; it is not just one switch):**
+
+1. Backend deployment (e.g. Render): set `AI_ASSISTANT_ENABLED=true`, make sure `ANTHROPIC_API_KEY` is set, and optionally `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` for spoken replies. Redeploy.
+2. Frontend: in `src/config/features.ts` set `AI_ASSISTANT_ENABLED = true`. Redeploy. (Nav entry and route return; the lazy page loads again.)
+3. `vercel.json`: change `Permissions-Policy` back to `microphone=(self)` (needed for the voice input and mic meter), and update SECURITY.md's header table to match.
+4. Verify: sign in as admin → AI Assistant appears in the nav and loads; `POST /api/admin/ai-assistant/command` returns 200; unauthenticated calls still 401. Run `npx vitest run tests/aiAssistantEnabled.test.ts` (proves the preserved code works with the flag on).
+5. Tests: `tests/aiAssistantDisabled.test.ts` pins the default-off state and assumes the flag is unset in the test environment. If you later make the feature default-on, change the `.default('false')` in `config/env.ts` and update that file in the same change.
+6. Review before connecting it to any agent: today the assistant only *simulates* agent actions and calls nothing. Any real delegation to the Customer Handler / Lead Finder needs its own design and security review (the specialist agents must not gain a dependency on it).
 
 ## Client Portal (accounts, projects, status)
 

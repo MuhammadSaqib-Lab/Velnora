@@ -2,6 +2,7 @@ import { Bot, FolderKanban, LayoutDashboard, Loader2, MessageSquareText, Menu, R
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { AI_ASSISTANT_ENABLED } from '@/config/features'
 import { cn } from '@/lib/utils'
 import { useAdminSession } from '@/lib/useAdminSession'
 
@@ -12,7 +13,8 @@ const NAV_ITEMS = [
   { to: '/internal/admin/projects', label: 'Projects', icon: FolderKanban, end: false },
   { to: '/internal/admin/reviews', label: 'Reviews', icon: Star, end: false },
   { to: '/internal/admin/agent-settings', label: 'Agent Settings', icon: SlidersHorizontal, end: false },
-  { to: '/internal/admin/ai-assistant', label: 'AI Assistant', icon: Bot, end: false },
+  // AI Assistant is TEMPORARILY DISABLED (src/config/features.ts): no nav entry while off.
+  ...(AI_ASSISTANT_ENABLED ? [{ to: '/internal/admin/ai-assistant', label: 'AI Assistant', icon: Bot, end: false }] : []),
 ]
 
 /**

@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
 import { Footer } from '@/components/layout/Footer'
+import { AI_ASSISTANT_ENABLED } from '@/config/features'
 import { Navbar } from '@/components/layout/Navbar'
 import { Home } from '@/pages/Home'
 import { NotFound } from '@/pages/NotFound'
@@ -47,7 +48,12 @@ const AdminProjectDetail = lazy(() =>
   import('@/pages/internal/admin/ProjectDetail').then((m) => ({ default: m.ProjectDetail })),
 )
 const AgentSettings = lazy(() => import('@/pages/internal/admin/AgentSettings').then((m) => ({ default: m.AgentSettings })))
-const AiAssistant = lazy(() => import('@/pages/internal/admin/AiAssistant').then((m) => ({ default: m.AiAssistant })))
+// AI Assistant: TEMPORARILY DISABLED (src/config/features.ts). When off, the
+// lazy import is never created, so the page and its heavy 3D/voice code are
+// never requested; the implementation itself is kept for the future phase.
+const AiAssistant = AI_ASSISTANT_ENABLED
+  ? lazy(() => import('@/pages/internal/admin/AiAssistant').then((m) => ({ default: m.AiAssistant })))
+  : null
 
 function PublicChrome({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
@@ -144,7 +150,12 @@ export default function App() {
                 <Route path="projects" element={<AdminProjects />} />
                 <Route path="projects/:id" element={<AdminProjectDetail />} />
                 <Route path="agent-settings" element={<AgentSettings />} />
-                <Route path="ai-assistant" element={<AiAssistant />} />
+                {AiAssistant ? (
+                  <Route path="ai-assistant" element={<AiAssistant />} />
+                ) : (
+                  // Disabled: an old bookmark lands on the dashboard instead of a dead page.
+                  <Route path="ai-assistant" element={<Navigate to="/internal/admin" replace />} />
+                )}
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

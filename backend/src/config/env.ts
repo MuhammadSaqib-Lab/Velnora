@@ -74,6 +74,17 @@ const envSchema = z.object({
   ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
   ADMIN_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
 
+  // AI Assistant kill switch — TEMPORARILY DISABLED. Defaults to off; only
+  // the literal strings 'true'/'false' are accepted (anything else fails
+  // startup rather than guessing, and z.coerce.boolean would treat the
+  // string 'false' as true). Server-side deployment config only: never
+  // exposed to the browser and never settable from a request. See
+  // aiAssistant/featureFlag.ts and backend/README.md for reactivation.
+  AI_ASSISTANT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
   // AI Assistant (Admin Dashboard voice console). Text commands
   // (POST /api/admin/ai-assistant/command) only need ANTHROPIC_API_KEY,
   // already above. ELEVENLABS_API_KEY is voice OUTPUT only — leave it
