@@ -29,6 +29,19 @@ export interface SearchLeadsParams {
   count: number
   opportunityTypes?: OpportunityKey[]
   minScore?: number
+  /** Keep only businesses where this pass found a public contact email (emails come from the business's own website). */
+  requireEmail?: boolean
+  /** Keep only businesses whose listing has a website. */
+  requireWebsite?: boolean
+}
+
+export interface LeadSearchStats {
+  /** Businesses the search provider returned. */
+  found: number
+  /** Businesses that were researched/analyzed. */
+  analyzed: number
+  /** Businesses that matched every criterion and were saved as leads. */
+  matched: number
 }
 
 interface ResearchedCandidate {
@@ -78,7 +91,12 @@ function toJsonInput(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue
 }
 
-export async function searchAndResearchLeads(params: SearchLeadsParams) {
+/**
+ * The Lead Finder's search → verify → research → analyze → score → save
+ * pipeline. `runLeadSearch` is the single implementation; it also reports
+ * real counts for callers that show them (the natural-language search).
+ */
+export async function runLeadSearch(params: SearchLeadsParams) {
   await assertAgentEnabled('LEAD_FINDER')
   const configured = await searchProvider.healthCheck()
   if (!configured) {
@@ -101,10 +119,13 @@ export async function searchAndResearchLeads(params: SearchLeadsParams) {
     )
   }
 
-  const researched = await mapWithConcurrency(candidates, RESEARCH_CONCURRENCY, researchCandidate)
+  // Skip researching listings that can't match anyway (no website to analyze).
+  const toResearch = params.requireWebsite ? candidates.filter((c) => Boolean(c.website)) : candidates
+  const researched = await mapWithConcurrency(toResearch, RESEARCH_CONCURRENCY, researchCandidate)
 
   const filtered = researched.filter((r) => {
     if (r.opportunities.length === 0) return false
+    if (params.requireEmail && !r.analysis?.contactEmail) return false
     if (params.minScore !== undefined && r.score < params.minScore) return false
     if (params.opportunityTypes && params.opportunityTypes.length > 0) {
       const found = new Set(r.opportunities.map((o) => o.type))
@@ -118,7 +139,13 @@ export async function searchAndResearchLeads(params: SearchLeadsParams) {
     savedLeads.push(await persistResearchedLead(result))
   }
 
-  return savedLeads
+  const stats: LeadSearchStats = { found: candidates.length, analyzed: researched.length, matched: savedLeads.length }
+  return { leads: savedLeads, stats }
+}
+
+/** Backward-compatible entry point (POST /api/leads/search): returns just the saved leads. */
+export async function searchAndResearchLeads(params: SearchLeadsParams) {
+  return (await runLeadSearch(params)).leads
 }
 
 async function persistResearchedLead(result: ResearchedCandidate) {

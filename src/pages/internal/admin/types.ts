@@ -167,3 +167,20 @@ export interface AgentConfigVersion {
   changedBy: string | null
   createdAt: string
 }
+
+/** Response of POST /api/leads/nl-search (the Lead Finder's natural-language search box). */
+export type NlSearchData =
+  | {
+      status: 'needs_clarification'
+      message: string
+      understood?: { summary: string }
+    }
+  | {
+      status: 'completed'
+      message: string
+      understood: { summary: string; method: 'AI' | 'RULES' }
+      warnings: string[]
+      effectiveLimit: number
+      stats: { found: number; analyzed: number; matched: number }
+      leads: LeadFinderLead[]
+    }

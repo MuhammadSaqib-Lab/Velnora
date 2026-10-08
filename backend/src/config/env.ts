@@ -38,6 +38,14 @@ const envSchema = z.object({
   LEAD_FINDER_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LEAD_EMAIL_AI_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('medium'),
 
+  // Natural-language Lead Finder search box: the AI only turns the admin's
+  // sentence into structured criteria (no email, no tools beyond one
+  // schema-validated 'set criteria' call), so a small/fast model is enough.
+  // LEAD_SEARCH_PARSER_MODEL is optional: unset = use AI_MODEL with a low
+  // effort (below). Set it to a smaller Claude model id to cut cost/latency.
+  LEAD_SEARCH_PARSER_MODEL: z.string().min(1).optional(),
+  LEAD_SEARCH_PARSER_AI_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('low'),
+
   // Gmail OAuth (draft creation only, see backend/src/leadFinder/gmail/).
   // GOOGLE_REFRESH_TOKEN is obtained once via the GET /api/leads/gmail/
   // auth-url -> oauth-callback flow and then copied into .env by hand —

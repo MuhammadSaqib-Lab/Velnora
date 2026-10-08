@@ -43,6 +43,10 @@ export interface AIProvider {
      * chat agent's own behavior. */
     effort?: AIEffort
     maxTokens?: number
+    /** Optional per-call model override (e.g. a smaller model for simple
+     * structured parsing). Omit to use the configured AI_MODEL — every
+     * existing caller does, so their requests are unchanged. */
+    model?: string
   }): Promise<AIGenerateResult>
 
   /** Cheap, no-network-call check of whether this provider is usable. */

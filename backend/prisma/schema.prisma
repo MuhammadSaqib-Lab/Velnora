@@ -80,6 +80,14 @@ enum LeadStatus {
   DISQUALIFIED
 }
 
+/// Lifecycle of one natural-language Lead Finder request (see LeadSearchRequest).
+enum LeadSearchStatus {
+  RUNNING
+  COMPLETED
+  NEEDS_CLARIFICATION
+  FAILED
+}
+
 enum OpportunityType {
   NO_WEBSITE
   OLD_WEBSITE
@@ -246,6 +254,32 @@ model Lead {
   @@index([opportunityScore])
   @@index([priority])
   @@map("leads")
+}
+
+/// History of the Lead Finder's natural-language search box: what the admin
+/// typed, the validated criteria it was turned into, and how it went. Purely
+/// a record — the search itself runs through the existing Lead Finder
+/// pipeline and its results are ordinary Lead rows. Holds no secrets and no
+/// raw provider/AI output. `createdBy` is the admin session's email, or
+/// "legacy-token" for the shared-token caller.
+model LeadSearchRequest {
+  id             String           @id @default(cuid())
+  query          String
+  parsedCriteria Json?
+  /// AI | RULES — which parser produced the criteria.
+  parseMethod    String?
+  status         LeadSearchStatus @default(RUNNING)
+  foundCount     Int?
+  resultCount    Int?
+  /// Short machine code for a failure, never provider/DB error text.
+  errorCode      String?
+  createdBy      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+  @@map("lead_search_requests")
 }
 
 /// Phase 3: AI Client Handling Agent. One row per chat widget session.

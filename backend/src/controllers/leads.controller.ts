@@ -8,6 +8,8 @@ import {
   searchAndResearchLeads,
   updateLeadStatus,
 } from '../services/leadFinder.service.js'
+import { runNaturalLanguageLeadSearch } from '../services/nlLeadSearch.service.js'
+import type { NlLeadSearchBody } from '../validators/nlLeadSearch.validator.js'
 import { generateAuthUrl, exchangeCodeForRefreshToken } from '../leadFinder/gmail/GmailProvider.js'
 import { AppError } from '../utils/AppError.js'
 import type { CreateDraftInput, LeadListQuery, LeadSearchInput } from '../validators/leadSearch.validator.js'
@@ -23,6 +25,24 @@ export async function postSearch(req: Request, res: Response) {
     message: `Researched ${leads.length} qualifying lead${leads.length === 1 ? '' : 's'}.`,
     data: { leads, count: leads.length },
   }
+  res.status(200).json(response)
+}
+
+/**
+ * Natural-language search box. The body is only { naturalLanguageQuery,
+ * filters? } (validated); everything the search actually runs with is
+ * derived and re-validated server-side. A clarification request is a
+ * normal 200 (not an error): the admin just needs to say more.
+ */
+export async function postNlSearch(req: Request, res: Response) {
+  const { naturalLanguageQuery, filters } = req.body as NlLeadSearchBody
+  // The actor comes from the authenticated admin session (or "legacy-token"
+  // for the shared-token caller) — never from the request.
+  const outcome = await runNaturalLanguageLeadSearch(
+    { naturalLanguageQuery, filters },
+    req.adminUser?.email ?? 'legacy-token',
+  )
+  const response: ApiResponse = { success: true, message: outcome.message, data: outcome }
   res.status(200).json(response)
 }
 

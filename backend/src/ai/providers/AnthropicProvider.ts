@@ -73,13 +73,21 @@ export class AnthropicProvider implements AIProvider {
     tools?: AIToolDefinition[]
     effort?: AIEffort
     maxTokens?: number
+    model?: string
   }): Promise<AIGenerateResult> {
     if (!client) {
       throw new Error('ANTHROPIC_API_KEY is not configured')
     }
 
+    // Only a caller that explicitly asks for a different model gets the
+    // plain request shape (no adaptive thinking / effort): those options
+    // are model-specific, so they are sent only for the configured AI_MODEL
+    // they were written for. Every existing caller passes no `model`, so
+    // their requests are byte-for-byte what they were before.
+    const overridden = params.model !== undefined && params.model !== env.AI_MODEL
+
     const response = await client.messages.create({
-      model: env.AI_MODEL,
+      model: params.model ?? env.AI_MODEL,
       max_tokens: params.maxTokens ?? env.AI_MAX_TOKENS,
       system: params.system,
       messages: toAnthropicMessages(params.messages),
@@ -87,8 +95,9 @@ export class AnthropicProvider implements AIProvider {
       // the chat agent's AI_EFFORT (low, right for a concise chat reply)
       // but callers with a different cost/quality tradeoff — e.g. the
       // Lead Finder's email generation — can pass their own.
-      thinking: { type: 'adaptive' },
-      output_config: { effort: params.effort ?? env.AI_EFFORT },
+      ...(overridden
+        ? {}
+        : { thinking: { type: 'adaptive' as const }, output_config: { effort: params.effort ?? env.AI_EFFORT } }),
       ...(params.tools && params.tools.length > 0 ? { tools: toAnthropicTools(params.tools) } : {}),
     })
 

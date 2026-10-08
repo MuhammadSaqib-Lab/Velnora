@@ -106,6 +106,7 @@ See [.env.example](.env.example) for the full list with descriptions. Never comm
 | `GOOGLE_PLACES_API_KEY` | Business discovery. Optional — leave unset to run everything else without Lead Finder search |
 | `LEAD_FINDER_RATE_LIMIT_WINDOW_MS` / `LEAD_FINDER_RATE_LIMIT_MAX` | Rate limit for the Lead Finder's expensive endpoints |
 | `LEAD_EMAIL_AI_EFFORT` | Reasoning effort for outreach email generation (reuses `ANTHROPIC_API_KEY`/`AI_MODEL` above) |
+| `LEAD_SEARCH_PARSER_MODEL` / `LEAD_SEARCH_PARSER_AI_EFFORT` | Natural-language Lead Finder search box: optional smaller model id for the one structured parsing call (unset = `AI_MODEL`), and its effort (default `low`) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` / `GOOGLE_REFRESH_TOKEN` | Gmail OAuth for draft creation only — see "Gmail OAuth setup" below |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Bootstraps the first `AdminUser` at startup if no account with that email exists yet. Both optional; the password is hashed immediately and never stored/logged in plaintext. See "Admin Dashboard authentication" below |
 | `ADMIN_SESSION_TTL_MS` | How long an admin login session cookie stays valid (default 12 hours) |
@@ -316,6 +317,30 @@ Every point is listed in a `reasons` array (`scoreLead.ts`) — the score is alw
 ### Deduplication
 
 Checked in order: exact `domain` match (DB-unique, nulls don't collide) → exact `phone` match → normalized business name (tolerant of punctuation/case). A match **enriches** the existing row (refreshed opportunities/score/analysis) rather than creating a duplicate, and never blanks out contact info the existing row already had just because a re-research pass found less.
+
+### Natural-language search (AI Lead Search)
+
+The Lead Finder page's command box turns a sentence like "Find 20 restaurants in Abbottabad with no website." into a normal Lead Finder search. It is an interface to the existing pipeline, not a second pipeline.
+
+```
+admin's sentence (+ the filter controls)
+  → parse: ONE AI call (strict tool schema)  ──fails/unavailable──▶  deterministic rule parser
+  → validated criteria (allowlisted Zod schema, unknown fields dropped)
+  → merge the explicit filters (they can only add or tighten)
+  → plan: clarify instead of guessing · clamp to server limits · re-validate with the manual search's own schema
+  → runLeadSearch(): find → verify → research → analyze → score → save   (the existing pipeline)
+  → ranked results + real counts
+```
+
+- **Endpoint:** `POST /api/leads/nl-search` `{ naturalLanguageQuery, filters? }` — same admin gate (session or legacy token) and the same `leadFinderRateLimiter` as the other paid Lead Finder operations. The browser sends only the sentence and `filters` (`hasEmail`, `opportunityTypes`, `minPriority`, `sortBy`); a smuggled `count`/`industry`/`location`/`createdBy` is a 400. The response is either `status: "completed"` (understood criteria, warnings, real `found/analyzed/matched` counts, leads) or `status: "needs_clarification"` with a question — a clarification is a normal 200, not an error.
+- **Code:** `leadFinder/nlSearch/` — `criteria.ts` (schema, sanitizing, filter merge, planning), `aiParser.ts`, `ruleParser.ts`, `parseLeadRequest.ts`; `services/nlLeadSearch.service.ts`. The only changes to the existing pipeline are two optional filters (`requireEmail`, `requireWebsite`) and `runLeadSearch()`, which also returns real counts; `searchAndResearchLeads()` (manual search) is a thin wrapper with unchanged behavior.
+- **Parser model & cost:** one structured call (`maxTokens: 400`, effort `LEAD_SEARCH_PARSER_AI_EFFORT`, default `low`). Optionally set `LEAD_SEARCH_PARSER_MODEL` to a smaller Claude model id to cut cost/latency; unset = the configured `AI_MODEL`. (An overridden model gets the plain request shape — no adaptive thinking/effort — because those are model-specific. This override has not been exercised against the live API in this repo's tests.) No `ANTHROPIC_API_KEY`, or an AI outage, falls back to the rule parser, so the box keeps working.
+- **What it understands:** location (area/city/region/country), business type (free text, not a fixed list — passed to Google Places as the `industry`, with the place kept separate as `location`), count, the five existing opportunity types (NO_WEBSITE, OLD_WEBSITE, POOR_MOBILE, WEAK_SEO, AI_AUTOMATION), email/website requirements, an explicit minimum priority tier, and ranking ("prioritize those with no website" ranks them first without excluding the rest).
+- **Limits (server-side):** at most **20** businesses per search — Google Places' per-request maximum — no matter what is asked ("find 50" searches for 20 and the response says so); no number = the existing default of 10. Pagination is not implemented.
+- **Clarifies instead of guessing:** no location → asks for one; neither location nor type ("Find good businesses.") → "I couldn't determine what type of businesses you want…"; and the impossible "no website **and** has an email" (emails are only ever collected from a business's website) is explained instead of running a search that cannot match.
+- **Emails stay manual.** The pipeline finds, verifies, researches, analyzes and scores — it does not generate emails or create Gmail drafts as part of a search, exactly as before; those remain explicit per-lead actions (generate → review → create draft → stop). Wording like "automatically email all of them" is detected only to show a note that nothing is sent; there is no send capability in the codebase to reach.
+- **History:** every request is recorded in `lead_search_requests` (the sentence, validated criteria, parser used, counts, status, the admin's email or `legacy-token`, a short error code — never provider output or secrets). Best-effort: a failed write never fails a search. There is no history UI yet.
+- **Combining the filter controls with the sentence:** "Has email" adds the email requirement; opportunity chips are added to the request's opportunity types (a lead qualifies with any of them); a priority picks a minimum tier (the stricter of the two wins); "Newest first" orders the results. Nothing loosens the written request.
 
 ### Generating the outreach email
 
