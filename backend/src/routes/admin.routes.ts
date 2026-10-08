@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { getAdminProjectById, getAdminProjects, patchAdminProjectStatus } from '../controllers/adminProjects.controller.js'
 import { getAdminOverview } from '../controllers/adminOverview.controller.js'
 import { postAssistantCommand, postAssistantSpeak } from '../controllers/adminAiAssistant.controller.js'
 import {
@@ -16,6 +17,7 @@ import { validateQuery } from '../middleware/validateQuery.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 import { assistantCommandSchema, assistantSpeakSchema } from '../validators/aiAssistant.validator.js'
 import { clientLeadListQuerySchema, clientLeadStatusUpdateSchema } from '../validators/adminClientLeads.validator.js'
+import { adminProjectListQuerySchema, projectStatusUpdateSchema } from '../validators/project.validator.js'
 import { adminReviewListQuerySchema, reviewStatusUpdateSchema } from '../validators/review.validator.js'
 
 /**
@@ -55,6 +57,12 @@ adminRouter.patch(
   validateBody(clientLeadStatusUpdateSchema),
   asyncHandler(patchClientLeadStatus),
 )
+
+// Client Portal projects: admin-only management (view, search, change
+// status). The status is changed here and ONLY here.
+adminRouter.get('/projects', validateQuery(adminProjectListQuerySchema), asyncHandler(getAdminProjects))
+adminRouter.get('/projects/:id', asyncHandler(getAdminProjectById))
+adminRouter.patch('/projects/:id/status', validateBody(projectStatusUpdateSchema), asyncHandler(patchAdminProjectStatus))
 
 adminRouter.get('/reviews', validateQuery(adminReviewListQuerySchema), asyncHandler(getAdminReviews))
 adminRouter.patch('/reviews/:id/status', validateBody(reviewStatusUpdateSchema), asyncHandler(patchReviewStatus))

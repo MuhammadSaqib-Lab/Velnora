@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
-import { NAV_CTA_LABEL, navItems } from '@/data/nav'
+import { CLIENT_LOGIN_HREF, CLIENT_LOGIN_LABEL, NAV_CTA_LABEL, navItems, START_PROJECT_HREF } from '@/data/nav'
 
 interface MobileMenuProps {
   open: boolean
@@ -48,8 +48,11 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                 </motion.li>
               ))}
             </ul>
-            <Button href="#contact" size="lg" className="w-full" onClick={onClose}>
+            <Button href={START_PROJECT_HREF} size="lg" className="w-full" onClick={onClose}>
               {NAV_CTA_LABEL}
+            </Button>
+            <Button href={CLIENT_LOGIN_HREF} variant="secondary" size="lg" className="mt-3 w-full" onClick={onClose}>
+              {CLIENT_LOGIN_LABEL}
             </Button>
           </nav>
         </motion.div>

@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/Button'
-import { NAV_CTA_LABEL, navItems } from '@/data/nav'
+import { NAV_CTA_LABEL, navItems, START_PROJECT_HREF } from '@/data/nav'
 import { services } from '@/data/services'
 import { BrandMark } from './BrandMark'
 
@@ -20,7 +20,7 @@ export function Footer() {
             An AI-powered web development studio building fast, well-structured websites and
             digital systems for businesses that want more from their online presence.
           </p>
-          <Button href="#contact" variant="secondary" className="mt-6">
+          <Button href={START_PROJECT_HREF} variant="secondary" className="mt-6">
             {NAV_CTA_LABEL}
           </Button>
         </div>

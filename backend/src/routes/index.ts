@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { adminRouter } from './admin.routes.js'
 import { adminAuthRouter } from './adminAuth.routes.js'
 import { aiChatRouter } from './aiChat.routes.js'
+import { clientRouter } from './client.routes.js'
 import { contactRouter } from './contact.routes.js'
 import { projectsRouter, servicesRouter } from './content.routes.js'
 import { healthRouter } from './health.routes.js'
@@ -20,4 +21,5 @@ apiRouter.use('/ai', aiChatRouter)
 apiRouter.use('/leads', leadsRouter)
 apiRouter.use('/reviews', reviewsRouter)
 apiRouter.use('/auth/admin', adminAuthRouter)
+apiRouter.use('/client', clientRouter)
 apiRouter.use('/admin', adminRouter)

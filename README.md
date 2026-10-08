@@ -95,11 +95,16 @@ SEO work is ongoing alongside the backend, not deferred to "later." Current stat
 
 The architecture is ready for future SEO expansion (dedicated `/services/*`, `/industries/*`, `/locations/*` pages) without a redesign: add a route in `src/App.tsx`, a matching entry in `src/lib/seoConfig.ts`, and a `<url>` entry in `public/sitemap.xml`. No placeholder/thin pages have been added speculatively, that would hurt SEO rather than help it.
 
+## Client Portal
+
+"Start a Project" takes a visitor to `/client/projects/new`. If they are logged out they sign up or log in first (`/signup`, `/login`) and then continue to the form; afterwards they follow their project under `/client/projects` on the same site. Admins manage projects and change their status under Admin Dashboard → Projects. The older Contact form still works without an account. See backend/README.md's "Client Portal" and SECURITY.md's "Client Portal security". Not built yet: email verification, password reset, and email notifications.
+
 ## Before Going Live
 
 - `velnora.com` domain references in `index.html`, `src/lib/seoConfig.ts`, `public/robots.txt`, `public/sitemap.xml`, and `backend/.env`'s `FRONTEND_URL`
 - `public/og-image.png` referenced by Open Graph/Twitter tags does not exist yet, add a real 1200x630 image
 - `vercel.json`'s `rewrites` proxies `/api/*` to the real deployed backend (`https://velnora-41qv.onrender.com`) so the browser only ever calls the frontend's own origin (`connect-src 'self'` in the CSP is enough) — if the backend ever moves to a different host, update the rewrite's destination URL here. This isn't just tidiness: the frontend calling the backend cross-origin directly broke the Admin Dashboard's session cookie twice in production (browsers won't attach `SameSite=Lax` to a cross-site request at all, and `SameSite=None` then hit third-party-cookie blocking), which is why this proxy exists rather than a plain cross-origin `fetch()`.
+- Run `npm run prisma:deploy` on the backend after pulling the Client Portal change — it adds `client_sessions`, `projects`, `project_status_history` and extends `users` (additive, safe on existing data); the client signup/login endpoints fail until it has run
 - Provision a real production PostgreSQL database and set a strong, unique `DATABASE_URL` (never reuse the local dev password)
 - Set `NODE_ENV=production` and a real `FRONTEND_URL` on the backend (Render) matching the exact deployed Vercel origin — a mismatch here causes a CORS `403` on every request from the live site (this exact symptom was hit and confirmed once, `FRONTEND_URL` must be updated in Render's dashboard, it isn't something a git push alone can fix)
 - Set a real `ANTHROPIC_API_KEY` in the backend's production environment for the AI Consultant to actually respond (it degrades to a friendly "not configured" message without one, the rest of the site still works)

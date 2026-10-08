@@ -43,6 +43,8 @@ export interface ApiErrorResponse {
   success: false
   message: string
   errors?: Record<string, string>
+  /** HTTP status of the failed response (e.g. 401 → session expired), when one was received. */
+  status?: number
 }
 
 export type ApiResult<T = unknown> = ApiSuccess<T> | ApiErrorResponse
@@ -62,10 +64,11 @@ export class ApiNetworkError extends Error {
 
 async function parseApiResult<T>(response: Response): Promise<ApiResult<T>> {
   try {
-    return (await response.json()) as ApiResult<T>
+    const body = (await response.json()) as ApiResult<T>
+    return body.success ? body : { ...body, status: response.status }
   } catch {
     // Response wasn't JSON at all (e.g. a proxy/500 HTML error page).
-    return { success: false, message: 'Something went wrong on our end. Please try again shortly.' }
+    return { success: false, message: 'Something went wrong on our end. Please try again shortly.', status: response.status }
   }
 }
 

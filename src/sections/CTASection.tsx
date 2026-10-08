@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { START_PROJECT_HREF } from '@/data/nav'
 import { Reveal } from '@/components/ui/Reveal'
 
 export function CTASection() {
@@ -18,7 +19,7 @@ export function CTASection() {
             Let's build a faster, smarter, and more effective digital presence for your business.
           </p>
           <div className="mt-9">
-            <Button href="#contact" size="lg">
+            <Button href={START_PROJECT_HREF} size="lg">
               Start a Project
               <ArrowRight className="h-4 w-4" strokeWidth={2} />
             </Button>

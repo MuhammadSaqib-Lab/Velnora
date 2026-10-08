@@ -1,5 +1,6 @@
 import { ArrowRight, Compass } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { START_PROJECT_HREF } from '@/data/nav'
 import { HeroVisual } from '@/components/three/HeroVisual'
 import { availabilityStatus } from '@/data/availability'
 
@@ -35,7 +36,7 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4">
-            <Button href="#contact" size="lg" className="w-full justify-center md:w-auto md:justify-start">
+            <Button href={START_PROJECT_HREF} size="lg" className="w-full justify-center md:w-auto md:justify-start">
               Start a Project
               <ArrowRight className="h-4 w-4" strokeWidth={2} />
             </Button>

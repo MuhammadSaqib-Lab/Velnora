@@ -28,7 +28,7 @@ export const processSummary = [
 export const factsSummary = [
   'A landing page typically takes 2-3 weeks from kickoff to launch; a full business site or e-commerce build typically runs 4-8 weeks. The exact estimate depends on scope and is given after understanding the project, never as a generic range up front.',
   'Projects run on a milestone-based payment schedule: a deposit to begin, then payments tied to milestones. Accepted via Payoneer, Wise, or direct bank wire transfer.',
-  'No client account or login is required to work with Velnora — everything runs through direct email and calls.',
+  'No account is needed to contact Velnora (the contact form and email always work). To submit a project on the website and follow its status, a client creates a free account via "Start a Project" and tracks progress under My Projects. Day-to-day work still runs through direct email and calls.',
   'At launch, clients receive full source code, documentation for anything custom, and a walkthrough call.',
   "The site's Work section shows clearly-labeled CONCEPT projects that demonstrate design/technical range, not real client engagements — never claim they are real clients.",
 ].join('\n')

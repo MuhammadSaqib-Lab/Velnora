@@ -14,3 +14,13 @@ export const navItems: NavItem[] = [
 ]
 
 export const NAV_CTA_LABEL = 'Start a Project'
+
+/**
+ * "Start a Project" goes to the Client Portal's New Project form. A
+ * logged-out visitor is sent through /login (or /signup) first and then
+ * continues here automatically (see ClientShell's `?next=` redirect).
+ * The Contact section's general inquiry form is unaffected.
+ */
+export const START_PROJECT_HREF = '/client/projects/new'
+export const CLIENT_LOGIN_HREF = '/login'
+export const CLIENT_LOGIN_LABEL = 'Client login'

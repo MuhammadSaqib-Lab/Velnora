@@ -1,7 +1,8 @@
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
-import { NAV_CTA_LABEL, navItems } from '@/data/nav'
+import { CLIENT_LOGIN_HREF, CLIENT_LOGIN_LABEL, NAV_CTA_LABEL, navItems, START_PROJECT_HREF } from '@/data/nav'
 import { BrandMark } from './BrandMark'
 import { MobileMenu } from './MobileMenu'
 
@@ -39,7 +40,15 @@ export function Navbar() {
         </nav>
 
         <div className="hidden lg:block">
-          <Button href="#contact">{NAV_CTA_LABEL}</Button>
+          <div className="flex items-center gap-5">
+            <Link
+              to={CLIENT_LOGIN_HREF}
+              className="text-sm text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+            >
+              {CLIENT_LOGIN_LABEL}
+            </Link>
+            <Button href={START_PROJECT_HREF}>{NAV_CTA_LABEL}</Button>
+          </div>
         </div>
 
         <button

@@ -118,6 +118,20 @@ enum ReviewStatus {
   REJECTED
 }
 
+/// Client project lifecycle. Only an admin can move a project between
+/// these (PATCH /api/admin/projects/:id/status); clients can only read it.
+enum ProjectStatus {
+  NEW_REQUEST
+  REVIEWING
+  APPROVED
+  IN_PROGRESS
+  CLIENT_REVIEW
+  REVISION
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
 /// Fixed allowlist of agents whose editable behavior lives in AgentConfig.
 /// Never derived from request input — routes are bound to exactly one
 /// value each (see backend/src/routes/adminAgentConfig.routes.ts).
@@ -126,15 +140,26 @@ enum AgentKey {
   LEAD_FINDER
 }
 
-/// Prepared for Phase 3 (authentication). Not used by any endpoint yet.
+/// Client accounts for the Client Portal (sign up / log in / My Projects).
+/// Extends the model that was prepared for Phase 3 rather than adding a
+/// parallel one. `email` is always stored lowercased. `role` is only ever
+/// set by the server (always USER at signup) — never from a request body.
+/// Distinct from AdminUser on purpose: a client session cookie can never
+/// authorize an /api/admin/* route, and vice versa.
 model User {
   id           String   @id @default(cuid())
   name         String
   email        String   @unique
   passwordHash String
   role         Role     @default(USER)
+  phone        String?
+  company      String?
+  lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  sessions     ClientSession[]
+  projects     Project[]
 
   @@index([email])
   @@map("users")
@@ -327,6 +352,75 @@ model QualifiedLead {
   @@index([status])
   @@index([createdAt])
   @@map("qualified_leads")
+}
+
+/// A logged-in client browser session — same design as AdminSession: the
+/// cookie carries a random token, only its SHA-256 digest is stored.
+model ClientSession {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  userAgent  String?
+  ipAddress  String?
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("client_sessions")
+}
+
+/// A project a client submitted through the Client Portal. Belongs to
+/// exactly one client; `clientId` is always derived from the session on
+/// the server, never accepted from a request. `projectSeq` is a database
+/// sequence (race-free) from which the public-facing number is derived:
+/// VEL-<1000 + projectSeq>. `budgetRange` is free text on purpose, same as
+/// ProjectInquiry (no preset pricing tiers).
+model Project {
+  id               String        @id @default(cuid())
+  projectSeq       Int           @unique @default(autoincrement())
+  clientId         String
+  projectName      String
+  projectType      String
+  description      String
+  websiteUrl       String?
+  targetAudience   String?
+  requiredFeatures String?
+  budgetRange      String?
+  timeline         String?
+  additionalNotes  String?
+  status           ProjectStatus @default(NEW_REQUEST)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  client           User          @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  statusHistory    ProjectStatusHistory[]
+
+  @@index([clientId, createdAt])
+  @@index([status])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+/// Append-only record of every status a project has had. `message` is
+/// shown to the client; `changedBy` is an admin email snapshot (or
+/// "client" for the initial submission) and is NEVER returned to clients.
+model ProjectStatusHistory {
+  id         String         @id @default(cuid())
+  projectId  String
+  oldStatus  ProjectStatus?
+  newStatus  ProjectStatus
+  message    String?
+  changedBy  String?
+  createdAt  DateTime       @default(now())
+
+  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("project_status_history")
 }
 
 /// The single source of truth for an agent's EDITABLE behavior (rules +

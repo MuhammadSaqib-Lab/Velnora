@@ -3,5 +3,8 @@ Allow: /
 Disallow: /internal/
 Disallow: /admin
 Disallow: /admin/
+Disallow: /client
+Disallow: /login
+Disallow: /signup
 
 Sitemap: https://www.velnora.com/sitemap.xml

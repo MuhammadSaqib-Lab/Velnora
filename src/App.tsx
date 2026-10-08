@@ -32,12 +32,33 @@ const LeadFinderLeadDetail = lazy(() =>
   import('@/pages/internal/admin/LeadFinderLeadDetail').then((m) => ({ default: m.LeadFinderLeadDetail })),
 )
 const AdminReviews = lazy(() => import('@/pages/internal/admin/Reviews').then((m) => ({ default: m.Reviews })))
+// Client Portal: sign up / log in, submit a project, follow its status.
+// Lazy-loaded like the admin area so the public homepage never pays for it.
+const ClientLogin = lazy(() => import('@/pages/client/ClientLogin').then((m) => ({ default: m.ClientLogin })))
+const ClientSignup = lazy(() => import('@/pages/client/ClientSignup').then((m) => ({ default: m.ClientSignup })))
+const ClientShell = lazy(() => import('@/pages/client/ClientShell').then((m) => ({ default: m.ClientShell })))
+const ClientProjects = lazy(() => import('@/pages/client/ClientProjects').then((m) => ({ default: m.ClientProjects })))
+const NewProject = lazy(() => import('@/pages/client/NewProject').then((m) => ({ default: m.NewProject })))
+const ClientProjectDetail = lazy(() =>
+  import('@/pages/client/ClientProjectDetail').then((m) => ({ default: m.ClientProjectDetail })),
+)
+const AdminProjects = lazy(() => import('@/pages/internal/admin/Projects').then((m) => ({ default: m.Projects })))
+const AdminProjectDetail = lazy(() =>
+  import('@/pages/internal/admin/ProjectDetail').then((m) => ({ default: m.ProjectDetail })),
+)
 const AgentSettings = lazy(() => import('@/pages/internal/admin/AgentSettings').then((m) => ({ default: m.AgentSettings })))
 const AiAssistant = lazy(() => import('@/pages/internal/admin/AiAssistant').then((m) => ({ default: m.AiAssistant })))
 
 function PublicChrome({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
-  const isInternal = pathname.startsWith('/internal') || pathname.startsWith('/admin')
+  // The client portal and its login/sign-up pages bring their own frame, so
+  // they get none of the marketing site's navbar/footer/chat widget either.
+  const isInternal =
+    pathname.startsWith('/internal') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/client') ||
+    pathname === '/login' ||
+    pathname === '/signup'
 
   if (isInternal) return <main>{children}</main>
 
@@ -60,6 +81,35 @@ export default function App() {
           <PublicChrome>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route
+                path="/login"
+                element={
+                  <Suspense fallback={null}>
+                    <ClientLogin />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <Suspense fallback={null}>
+                    <ClientSignup />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/client"
+                element={
+                  <Suspense fallback={null}>
+                    <ClientShell />
+                  </Suspense>
+                }
+              >
+                <Route index element={<Navigate to="/client/projects" replace />} />
+                <Route path="projects" element={<ClientProjects />} />
+                <Route path="projects/new" element={<NewProject />} />
+                <Route path="projects/:id" element={<ClientProjectDetail />} />
+              </Route>
               <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
               <Route
                 path="/admin/login"
@@ -91,6 +141,8 @@ export default function App() {
                 <Route path="lead-finder" element={<LeadFinderLeads />} />
                 <Route path="lead-finder/:id" element={<LeadFinderLeadDetail />} />
                 <Route path="reviews" element={<AdminReviews />} />
+                <Route path="projects" element={<AdminProjects />} />
+                <Route path="projects/:id" element={<AdminProjectDetail />} />
                 <Route path="agent-settings" element={<AgentSettings />} />
                 <Route path="ai-assistant" element={<AiAssistant />} />
               </Route>

@@ -91,6 +91,18 @@ const envSchema = z.object({
   // instructions for the Customer Handler and Lead Finder agents).
   AGENT_CONFIG_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
   AGENT_CONFIG_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+
+  // Client Portal. Sessions last a week (clients return occasionally, an
+  // admin shift is 12h). Login/registration are limited per IP, tighter
+  // for registration since it creates rows; project creation is bounded
+  // too so one account can't spam the admin queue.
+  CLIENT_SESSION_TTL_MS: z.coerce.number().int().positive().default(7 * 24 * 60 * 60 * 1000),
+  CLIENT_LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  CLIENT_LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  CLIENT_REGISTER_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 60 * 1000),
+  CLIENT_REGISTER_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  CLIENT_PROJECT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 60 * 1000),
+  CLIENT_PROJECT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
 })
 
 function loadEnv() {

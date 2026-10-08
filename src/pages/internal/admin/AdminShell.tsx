@@ -1,4 +1,4 @@
-import { Bot, LayoutDashboard, Loader2, MessageSquareText, Menu, Radar, SlidersHorizontal, Star, X } from 'lucide-react'
+import { Bot, FolderKanban, LayoutDashboard, Loader2, MessageSquareText, Menu, Radar, SlidersHorizontal, Star, X } from 'lucide-react'
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/internal/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/internal/admin/client-leads', label: 'Client Agent Leads', icon: MessageSquareText, end: false },
   { to: '/internal/admin/lead-finder', label: 'Lead Finder', icon: Radar, end: false },
+  { to: '/internal/admin/projects', label: 'Projects', icon: FolderKanban, end: false },
   { to: '/internal/admin/reviews', label: 'Reviews', icon: Star, end: false },
   { to: '/internal/admin/agent-settings', label: 'Agent Settings', icon: SlidersHorizontal, end: false },
   { to: '/internal/admin/ai-assistant', label: 'AI Assistant', icon: Bot, end: false },

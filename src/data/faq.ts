@@ -22,6 +22,6 @@ export const faqItems: FaqItem[] = [
   {
     question: 'Do I need to create an account or log in?',
     answer:
-      "No account or login is required to work with us. Everything runs through direct email and calls with your developer. If a client portal makes sense for a specific project later on, we'll bring it up, it's never a requirement to get started.",
+      "You can always reach us through the contact form or by email without an account. To submit a project through the site and follow its status, you create a free client account (Start a Project) and track progress under My Projects. Day-to-day work still runs through direct email and calls with your developer.",
   },
 ]

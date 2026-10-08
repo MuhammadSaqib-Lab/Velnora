@@ -110,6 +110,8 @@ See [.env.example](.env.example) for the full list with descriptions. Never comm
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Bootstraps the first `AdminUser` at startup if no account with that email exists yet. Both optional; the password is hashed immediately and never stored/logged in plaintext. See "Admin Dashboard authentication" below |
 | `ADMIN_SESSION_TTL_MS` | How long an admin login session cookie stays valid (default 12 hours) |
 | `ADMIN_LOGIN_RATE_LIMIT_WINDOW_MS` / `ADMIN_LOGIN_RATE_LIMIT_MAX` | Brute-force rate limit for `POST /api/auth/admin/login`, keyed by IP |
+| `CLIENT_SESSION_TTL_MS` | Client Portal session lifetime (default 7 days) |
+| `CLIENT_LOGIN_RATE_LIMIT_*` / `CLIENT_REGISTER_RATE_LIMIT_*` / `CLIENT_PROJECT_RATE_LIMIT_*` | `_WINDOW_MS` / `_MAX` per IP for client login (10/15min), sign-up (5/hour) and project submission (10/hour) |
 | `AGENT_CONFIG_RATE_LIMIT_WINDOW_MS` / `AGENT_CONFIG_RATE_LIMIT_MAX` | Rate limit for saving/restoring agent rules and instructions in Agent Settings (default 20/min) |
 
 ## Commands
@@ -390,6 +392,35 @@ See SECURITY.md's "Admin Dashboard security" section for the full threat-model w
 ```
 
 `/internal/lead-finder` (the original minimal test page) is untouched and still fully functional, still gated by the legacy shared token via `AdminTokenGate.tsx`/`useAdminToken.ts` — it now links to the dashboard, but nothing was removed from it. `/internal/admin/*` is instead gated by `useAdminSession()`, which checks `GET /api/auth/admin/me` and redirects to `/admin/login` if it's not authenticated — a UX convenience only, the backend independently re-verifies every request regardless. All admin/login routes are lazy-loaded (`React.lazy`) per page, so the public homepage's bundle is unaffected and a visitor never pays for this code unless they navigate to `/admin/*` or `/internal/*`.
+
+## Client Portal (accounts, projects, status)
+
+Clients sign up and log in on the SAME site, submit a project, and follow its status under "My Projects". Admins manage the same projects from the Admin Dashboard.
+
+**Data model** (`schema.prisma`): `User` (extended with `phone`/`company`/`lastLoginAt`; `role` is server-set to USER), `ClientSession` (SHA-256 token digest, same design as `AdminSession`), `Project` (`projectSeq` is a DB sequence → public number `VEL-1001`, `VEL-1002`…), `ProjectStatusHistory` (append-only), and the `ProjectStatus` enum (`NEW_REQUEST → REVIEWING → APPROVED → IN_PROGRESS → CLIENT_REVIEW ⇄ REVISION → COMPLETED`, plus `ON_HOLD`/`CANCELLED`). The migration is purely additive.
+
+**API** (all JSON; `/api/client/*` responses are `Cache-Control: no-store`):
+
+```
+POST /api/client/auth/register        { name, email, password, confirmPassword, phone?, company? }  → creates the account AND signs in
+POST /api/client/auth/login           { email, password }
+POST /api/client/auth/logout
+GET  /api/client/session                                   (client session)
+GET  /api/client/projects                                  (own projects only)
+POST /api/client/projects             { projectName, projectType, description, websiteUrl?, targetAudience?, requiredFeatures?, budgetRange?, timeline?, additionalNotes? }
+GET  /api/client/projects/:id                              (404 unless it is YOURS)
+GET  /api/client/projects/:id/status-history
+
+GET   /api/admin/projects             ?search&status&sort&page&pageSize   (admin session)
+GET   /api/admin/projects/:id         client contact info + full history incl. who changed what
+PATCH /api/admin/projects/:id/status  { status, message? }  ← the ONLY way a status changes
+```
+
+**Security model.** Identity is derived server-side from the cookie and nothing else: bodies are `.strict()` Zod schemas with no `clientId`/`status`/`id`/`role` (sending one is a 400), ownership is part of the query itself (`where: { id, clientId }`), so a project belonging to someone else is indistinguishable from a nonexistent one (404, and its history table is never queried). Clients have no route that changes a status; client cookie ≠ admin cookie, neither satisfies the other's routes. Passwords: bcrypt (via `utils/passwordHash.ts`), min 10 chars with a letter and a number, ≤72 bytes (bcrypt's real limit), must not contain the email. Login gives the same response for a wrong password and an unknown email and always runs a bcrypt compare. Registering an existing email returns a clear 409 (a deliberate UX trade-off, bounded by the tighter sign-up rate limit). Rate limits (per IP, env-tunable): login 10/15min, sign-up 5/hour, project submit 10/hour; plus 25 projects per account.
+
+**Email.** Nothing is sent: the only email integration is the Lead Finder's draft-only Gmail connector. `projectNotifications.service.ts` is the single stubbed hook where a transactional sender would plug in (it logs metadata only, never the client's address or project text). **Not built yet:** email verification, password reset, per-client email notifications.
+
+**Frontend:** `/login`, `/signup`, `/client` → `/client/projects`, `/client/projects/new`, `/client/projects/:id`; admin `/internal/admin/projects` (+ `/:id`). The status stepper shows real statuses only — there is no percentage-complete because no real progress metric exists.
 
 ## Agent configuration (Customer Handler + Lead Finder)
 

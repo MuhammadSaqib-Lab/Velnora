@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { env } from '../config/env.js'
 
@@ -21,6 +22,20 @@ const SALT_ROUNDS = env.NODE_ENV === 'test' ? 4 : 12
 
 export function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS)
+}
+
+/**
+ * Real bcrypt comparison that always runs, even when no account matched
+ * (`hash` is null) — so "no such account" and "wrong password" take
+ * the same time and timing can't enumerate registered emails. The dummy
+ * hash is computed once per process (bcrypt is deliberately slow).
+ */
+let dummyHashPromise: Promise<string> | null = null
+export async function verifyPasswordOrDummy(password: string, hash: string | null): Promise<boolean> {
+  if (hash) return bcrypt.compare(password, hash)
+  dummyHashPromise ??= bcrypt.hash(randomBytes(24).toString('hex'), SALT_ROUNDS)
+  await bcrypt.compare(password, await dummyHashPromise)
+  return false
 }
 
 export function verifyPassword(password: string, hash: string): Promise<boolean> {

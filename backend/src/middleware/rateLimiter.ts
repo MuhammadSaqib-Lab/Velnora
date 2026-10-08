@@ -109,6 +109,40 @@ export const agentConfigWriteRateLimiter = rateLimit({
   },
 })
 
+function limiter(windowMs: number, limit: number, message: string) {
+  return rateLimit({
+    windowMs,
+    limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      const response: ApiError = { success: false, message }
+      res.status(429).json(response)
+    },
+  })
+}
+
+/** Client Portal login — brute-force defense, keyed by IP like every limiter here. */
+export const clientLoginRateLimiter = limiter(
+  env.CLIENT_LOGIN_RATE_LIMIT_WINDOW_MS,
+  env.CLIENT_LOGIN_RATE_LIMIT_MAX,
+  'Too many login attempts. Please wait a few minutes and try again.',
+)
+
+/** Client Portal sign-up — tighter, since each success creates an account row. */
+export const clientRegisterRateLimiter = limiter(
+  env.CLIENT_REGISTER_RATE_LIMIT_WINDOW_MS,
+  env.CLIENT_REGISTER_RATE_LIMIT_MAX,
+  'Too many sign-up attempts. Please try again later.',
+)
+
+/** Client Portal project submission. */
+export const clientProjectRateLimiter = limiter(
+  env.CLIENT_PROJECT_RATE_LIMIT_WINDOW_MS,
+  env.CLIENT_PROJECT_RATE_LIMIT_MAX,
+  'You have submitted several projects recently. Please wait a while before submitting another.',
+)
+
 /**
  * Applied only to POST /api/auth/admin/login — the primary brute-force
  * defense, since there is no per-account lockout (see
