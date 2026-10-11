@@ -10,20 +10,21 @@
  * registration time, so there is no `:agentId` parameter an attacker (or
  * a buggy client) could vary to read or write another agent's config.
  */
-export const AGENT_KEYS = ['CUSTOMER_HANDLER', 'LEAD_FINDER'] as const
+export const AGENT_KEYS = ['CUSTOMER_HANDLER', 'LEAD_FINDER', 'DIGITAL_MARKETING'] as const
 
 export type AgentKey = (typeof AGENT_KEYS)[number]
 
 export interface AgentDescriptor {
   key: AgentKey
   /** URL segment under /api/admin/agents/. */
-  slug: 'customer-handler' | 'lead-finder'
+  slug: 'customer-handler' | 'lead-finder' | 'digital-marketing'
   displayName: string
 }
 
 export const AGENTS: readonly AgentDescriptor[] = [
   { key: 'CUSTOMER_HANDLER', slug: 'customer-handler', displayName: 'Customer Handler Agent' },
   { key: 'LEAD_FINDER', slug: 'lead-finder', displayName: 'Lead Finder Agent' },
+  { key: 'DIGITAL_MARKETING', slug: 'digital-marketing', displayName: 'Digital Marketing Agent' },
 ]
 
 export function describeAgent(key: AgentKey): AgentDescriptor {

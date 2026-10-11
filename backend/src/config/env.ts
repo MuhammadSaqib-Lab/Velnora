@@ -111,6 +111,19 @@ const envSchema = z.object({
   AGENT_CONFIG_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
   AGENT_CONFIG_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
 
+  // Digital Marketing Agent. Reuses ANTHROPIC_API_KEY/AI_MODEL; these only tune it.
+  // MARKETING_TASK_RATE_LIMIT_* bounds every expensive task (AI generation, SEO
+  // audits) per IP; MARKETING_MAX_CONCURRENT_TASKS caps tasks running at once.
+  // GOOGLE_PAGESPEED_API_KEY is OPTIONAL: Google's PageSpeed Insights API also
+  // works without a key at a low quota; a key raises the quota. Core Web Vitals
+  // are only shown when that API actually returns data.
+  MARKETING_AI_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('medium'),
+  MARKETING_AI_MAX_TOKENS: z.coerce.number().int().min(500).max(16000).default(6000),
+  MARKETING_TASK_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60 * 1000),
+  MARKETING_TASK_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
+  MARKETING_MAX_CONCURRENT_TASKS: z.coerce.number().int().min(1).max(10).default(3),
+  GOOGLE_PAGESPEED_API_KEY: z.string().min(1).optional(),
+
   // Client Portal. Sessions last a week (clients return occasionally, an
   // admin shift is 12h). Login/registration are limited per IP, tighter
   // for registration since it creates rows; project creation is bounded

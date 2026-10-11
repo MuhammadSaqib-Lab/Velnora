@@ -48,6 +48,18 @@ const AdminProjectDetail = lazy(() =>
   import('@/pages/internal/admin/ProjectDetail').then((m) => ({ default: m.ProjectDetail })),
 )
 const AgentSettings = lazy(() => import('@/pages/internal/admin/AgentSettings').then((m) => ({ default: m.AgentSettings })))
+// Digital Marketing workspace (Admin Dashboard). Each page is its own chunk.
+const MarketingLayout = lazy(() => import('@/pages/internal/admin/marketing/MarketingLayout').then((m) => ({ default: m.MarketingLayout })))
+const MarketingOverview = lazy(() => import('@/pages/internal/admin/marketing/MarketingOverview').then((m) => ({ default: m.MarketingOverview })))
+const SeoWorkspace = lazy(() => import('@/pages/internal/admin/marketing/SeoWorkspace').then((m) => ({ default: m.SeoWorkspace })))
+const SocialStudio = lazy(() => import('@/pages/internal/admin/marketing/SocialStudio').then((m) => ({ default: m.SocialStudio })))
+const MarketingStrategies = lazy(() => import('@/pages/internal/admin/marketing/MarketingStrategies').then((m) => ({ default: m.MarketingStrategies })))
+const CampaignPlanner = lazy(() => import('@/pages/internal/admin/marketing/CampaignPlanner').then((m) => ({ default: m.CampaignPlanner })))
+const ClientAcquisition = lazy(() => import('@/pages/internal/admin/marketing/ClientAcquisition').then((m) => ({ default: m.ClientAcquisition })))
+const MarketingRules = lazy(() => import('@/pages/internal/admin/marketing/MarketingRules').then((m) => ({ default: m.MarketingRules })))
+const MarketingIntegrations = lazy(() => import('@/pages/internal/admin/marketing/MarketingIntegrations').then((m) => ({ default: m.MarketingIntegrations })))
+const MarketingTasks = lazy(() => import('@/pages/internal/admin/marketing/MarketingTasks').then((m) => ({ default: m.MarketingTasks })))
+const MarketingSettings = lazy(() => import('@/pages/internal/admin/marketing/MarketingSettings').then((m) => ({ default: m.MarketingSettings })))
 // AI Assistant: TEMPORARILY DISABLED (src/config/features.ts). When off, the
 // lazy import is never created, so the page and its heavy 3D/voice code are
 // never requested; the implementation itself is kept for the future phase.
@@ -150,6 +162,19 @@ export default function App() {
                 <Route path="projects" element={<AdminProjects />} />
                 <Route path="projects/:id" element={<AdminProjectDetail />} />
                 <Route path="agent-settings" element={<AgentSettings />} />
+                <Route path="marketing" element={<MarketingLayout />}>
+                  <Route index element={<MarketingOverview />} />
+                  <Route path="seo" element={<SeoWorkspace />} />
+                  <Route path="social" element={<SocialStudio />} />
+                  <Route path="strategy" element={<MarketingStrategies />} />
+                  <Route path="campaigns" element={<CampaignPlanner />} />
+                  <Route path="acquisition" element={<ClientAcquisition />} />
+                  <Route path="rules" element={<MarketingRules />} />
+                  <Route path="integrations" element={<MarketingIntegrations />} />
+                  <Route path="tasks" element={<MarketingTasks />} />
+                  <Route path="settings" element={<MarketingSettings />} />
+                  <Route path="*" element={<Navigate to="/internal/admin/marketing" replace />} />
+                </Route>
                 {AiAssistant ? (
                   <Route path="ai-assistant" element={<AiAssistant />} />
                 ) : (

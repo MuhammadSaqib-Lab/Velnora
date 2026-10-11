@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 
-type Key = 'CUSTOMER_HANDLER' | 'LEAD_FINDER'
+type Key = 'CUSTOMER_HANDLER' | 'LEAD_FINDER' | 'DIGITAL_MARKETING'
 type Row = Record<string, unknown> & { id: string; agentKey: Key; version: number }
 type VersionRow = Record<string, unknown> & { agentKey: Key; version: number }
 

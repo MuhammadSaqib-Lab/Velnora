@@ -23,6 +23,11 @@ const AGENTS: Array<{ slug: AgentSlug; label: string; blurb: string }> = [
     label: 'Lead Finder',
     blurb: 'The outreach writer that drafts personalized emails for researched businesses.',
   },
+  {
+    slug: 'digital-marketing',
+    label: 'Digital Marketing',
+    blurb: 'Prepares SEO audits, social drafts, strategies and campaign plans for you to review. It cannot publish, send or spend.',
+  },
 ]
 
 function formatDate(value: string) {
@@ -88,7 +93,7 @@ export function AgentSettings() {
   )
 }
 
-function AgentConfigCard({ slug, label, blurb }: { slug: AgentSlug; label: string; blurb: string }) {
+export function AgentConfigCard({ slug, label, blurb }: { slug: AgentSlug; label: string; blurb: string }) {
   const base = `/admin/agents/${slug}/config`
 
   const [config, setConfig] = useState<AgentConfig | null>(null)
@@ -225,7 +230,9 @@ function AgentConfigCard({ slug, label, blurb }: { slug: AgentSlug; label: strin
             <span className="mt-0.5 block text-[var(--color-ink-muted)]">
               {slug === 'customer-handler'
                 ? 'When off, the website chat stops answering and points visitors to the contact form.'
-                : 'When off, Lead Finder searches, re-analysis, email generation and draft creation are blocked.'}
+                : slug === 'digital-marketing'
+                  ? 'When off, AI generation in the Digital Marketing workspace is blocked. Saved drafts and reports stay available.'
+                  : 'When off, Lead Finder searches, re-analysis, email generation and draft creation are blocked.'}
             </span>
           </span>
         </label>

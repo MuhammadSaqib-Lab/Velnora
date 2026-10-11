@@ -21,6 +21,7 @@ const ALLOWED_PROTOCOLS = new Set(['http:', 'https:'])
 const MAX_REDIRECTS = 3
 const DEFAULT_TIMEOUT_MS = 8000
 const MAX_RESPONSE_BYTES = 3 * 1024 * 1024 // 3MB — plenty for HTML, not for an abuse payload
+const DEFAULT_USER_AGENT = 'VelnoraLeadFinderBot/1.0 (+https://www.velnora.com)'
 
 export class UnsafeUrlError extends Error {
   constructor(message: string) {
@@ -92,6 +93,20 @@ export interface SafeFetchResult {
   headers: Headers
   text: string
   durationMs: number
+  /** Every URL requested before the final one, in order (empty when there was no redirect). */
+  redirects: string[]
+}
+
+/**
+ * Optional per-call settings. Every default equals the original behavior,
+ * so existing callers (the Lead Finder) are unaffected. Limits can only be
+ * tightened in practice — callers never pass larger ones.
+ */
+export interface SafeFetchOptions {
+  method?: 'GET' | 'HEAD'
+  userAgent?: string
+  timeoutMs?: number
+  maxBytes?: number
 }
 
 /**
@@ -100,7 +115,11 @@ export interface SafeFetchResult {
  * on any network-level failure — callers treat a null result as an
  * honest "could not reach this website," not a fatal error.
  */
-export async function safeFetchText(inputUrl: string): Promise<SafeFetchResult | null> {
+export async function safeFetchText(inputUrl: string, options: SafeFetchOptions = {}): Promise<SafeFetchResult | null> {
+  const method = options.method ?? 'GET'
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const maxBytes = Math.min(options.maxBytes ?? MAX_RESPONSE_BYTES, MAX_RESPONSE_BYTES)
+  const redirects: string[] = []
   let currentUrl: URL
   try {
     currentUrl = new URL(inputUrl)
@@ -119,14 +138,15 @@ export async function safeFetchText(inputUrl: string): Promise<SafeFetchResult |
     }
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
     let response: Response
     try {
       response = await fetch(currentUrl, {
+        method,
         redirect: 'manual',
         signal: controller.signal,
-        headers: { 'User-Agent': 'VelnoraLeadFinderBot/1.0 (+https://www.velnora.com)' },
+        headers: { 'User-Agent': options.userAgent ?? DEFAULT_USER_AGENT },
       })
     } catch {
       return null
@@ -137,6 +157,7 @@ export async function safeFetchText(inputUrl: string): Promise<SafeFetchResult |
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location')
       if (!location) return null
+      redirects.push(currentUrl.toString())
       try {
         currentUrl = new URL(location, currentUrl)
       } catch {
@@ -146,14 +167,14 @@ export async function safeFetchText(inputUrl: string): Promise<SafeFetchResult |
     }
 
     const contentLength = response.headers.get('content-length')
-    if (contentLength && Number(contentLength) > MAX_RESPONSE_BYTES) {
+    if (contentLength && Number(contentLength) > maxBytes) {
       return null
     }
 
     const body = response.body
     if (!body) {
       const text = await response.text().catch(() => '')
-      return { finalUrl: currentUrl.toString(), status: response.status, headers: response.headers, text, durationMs: Date.now() - startedAt }
+      return { finalUrl: currentUrl.toString(), status: response.status, headers: response.headers, text, durationMs: Date.now() - startedAt, redirects }
     }
 
     const reader = body.getReader()
@@ -164,7 +185,7 @@ export async function safeFetchText(inputUrl: string): Promise<SafeFetchResult |
         const { done, value } = await reader.read()
         if (done) break
         received += value.byteLength
-        if (received > MAX_RESPONSE_BYTES) {
+        if (received > maxBytes) {
           await reader.cancel().catch(() => undefined)
           return null
         }
@@ -181,6 +202,7 @@ export async function safeFetchText(inputUrl: string): Promise<SafeFetchResult |
       headers: response.headers,
       text,
       durationMs: Date.now() - startedAt,
+      redirects,
     }
   }
 

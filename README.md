@@ -99,6 +99,8 @@ The architecture is ready for future SEO expansion (dedicated `/services/*`, `/i
 
 "Start a Project" takes a visitor to `/client/projects/new`. If they are logged out they sign up or log in first (`/signup`, `/login`) and then continue to the form; afterwards they follow their project under `/client/projects` on the same site. Admins manage projects and change their status under Admin Dashboard → Projects. The older Contact form still works without an account. See backend/README.md's "Client Portal" and SECURITY.md's "Client Portal security". Not built yet: email verification, password reset, and email notifications.
 
+The **Digital Marketing Agent** (Admin Dashboard → Digital Marketing, `/internal/admin/marketing`) prepares SEO audits of a public website (SSRF-guarded crawl; findings labelled verified / recommendation / estimate / unavailable, with no invented rankings, traffic or keyword volumes), social media drafts for six platforms with an approval workflow, strategies, campaign plans and client-acquisition ideas — all as drafts for a human to review. It cannot publish, send email or messages, or spend ad budget; "approved" and "active" are records only. Its rules are editable in the dashboard (same system as the other agents), and integrations that don't exist yet (Search Console, Analytics, Business Profile, keyword data, social publishing) are listed as not connected rather than faked. See backend/README.md's "Digital Marketing Agent" and SECURITY.md's "Digital Marketing Agent security".
+
 ## Before Going Live
 
 - `velnora.com` domain references in `index.html`, `src/lib/seoConfig.ts`, `public/robots.txt`, `public/sitemap.xml`, and `backend/.env`'s `FRONTEND_URL`

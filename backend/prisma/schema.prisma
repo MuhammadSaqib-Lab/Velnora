@@ -146,6 +146,7 @@ enum ProjectStatus {
 enum AgentKey {
   CUSTOMER_HANDLER
   LEAD_FINDER
+  DIGITAL_MARKETING
 }
 
 /// Client accounts for the Client Portal (sign up / log in / My Projects).
@@ -280,6 +281,264 @@ model LeadSearchRequest {
   @@index([createdAt])
   @@index([status])
   @@map("lead_search_requests")
+}
+
+// ───────────────────────────── Digital Marketing Agent ─────────────────────────────
+// Everything below is PLANNING AND DRAFT data for human review. Nothing in these
+// tables is ever published, sent, or spent anywhere — there is no code path that
+// does that. Editable rules/instructions for the agent itself live in AgentConfig
+// (AgentKey.DIGITAL_MARKETING), not here.
+
+enum MarketingTaskStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// How a finding should be read. VERIFIED = directly observed by the audit;
+/// RECOMMENDATION = advice derived from verified findings; ESTIMATE = a
+/// labelled guess about opportunity (never a number from thin air);
+/// UNAVAILABLE = something we cannot know without a data source we don't have.
+enum FindingLabel {
+  VERIFIED
+  RECOMMENDATION
+  ESTIMATE
+  UNAVAILABLE
+}
+
+enum SocialPlatform {
+  LINKEDIN
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  X
+  YOUTUBE
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum StrategyStatus {
+  DRAFT
+  APPROVED
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  PLANNED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+/// One unit of agent work (an SEO audit, a content generation, a strategy…).
+/// Records what was asked, which AgentConfig version it ran under, how it
+/// ended and what it produced. `input` is validated and holds no secrets;
+/// `errorMessage` is always a short, sanitized sentence.
+model MarketingTask {
+  id            String              @id @default(cuid())
+  type          String
+  status        MarketingTaskStatus @default(PENDING)
+  input         Json                @default("{}")
+  configVersion Int?
+  /// Repeating a request with the same key returns this task instead of running again.
+  idempotencyKey String?            @unique
+  resultType    String?
+  resultIds     Json                @default("[]")
+  errorCode     String?
+  errorMessage  String?
+  retryOfId     String?
+  createdBy     String
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([createdAt])
+  @@index([type, status])
+  @@map("marketing_tasks")
+}
+
+model SeoAudit {
+  id        String   @id @default(cuid())
+  taskId    String?
+  url       String
+  finalUrl  String?
+  domain    String
+  /// OWN | CLIENT | COMPETITOR — only a label for the report, not a permission.
+  kind      String   @default("OWN")
+  /// Pages fetched, counts by label, which data sources were/weren't available.
+  summary   Json     @default("{}")
+  createdBy String
+  createdAt DateTime @default(now())
+
+  findings  SeoAuditFinding[]
+
+  @@index([domain, createdAt])
+  @@index([createdAt])
+  @@map("seo_audits")
+}
+
+model SeoAuditFinding {
+  id         String       @id @default(cuid())
+  auditId    String
+  /// Stable id of the check (e.g. "title.length") so two audits can be compared.
+  checkKey   String
+  category   String
+  label      FindingLabel
+  /// PASS | WARN | FAIL | INFO — only meaningful for VERIFIED findings.
+  result     String?
+  title      String
+  detail     String
+  evidence   Json?
+  pageUrl    String?
+  /// 1–5, only on RECOMMENDATION/ESTIMATE rows.
+  impact     Int?
+  effort     Int?
+  /// HIGH | MEDIUM | LOW
+  confidence String?
+
+  audit      SeoAudit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
+  @@index([checkKey])
+  @@map("seo_audit_findings")
+}
+
+model SocialContentDraft {
+  id              String         @id @default(cuid())
+  platform        SocialPlatform
+  /// POST | CAROUSEL | VIDEO_SCRIPT | REEL_CONCEPT | YOUTUBE_OUTLINE | HASHTAGS | CASE_STUDY | CAMPAIGN_POST
+  contentType     String
+  objective       String?
+  audience        String?
+  title           String?
+  body            String
+  hashtags        String[]
+  callToAction    String?
+  notes           String?
+  status          ContentStatus  @default(DRAFT)
+  /// Planned publication date — a plan only; nothing is ever published.
+  plannedFor      DateTime?
+  campaignId      String?
+  sourceDraftId   String?
+  generatedByTaskId String?
+  /// AI | MANUAL
+  origin          String         @default("AI")
+  createdBy       String
+  updatedBy       String?
+  approvedBy      String?
+  approvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  campaign        MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  revisions       SocialDraftRevision[]
+
+  @@index([status])
+  @@index([plannedFor])
+  @@index([platform, createdAt])
+  @@index([campaignId])
+  @@map("social_content_drafts")
+}
+
+model SocialDraftRevision {
+  id        String   @id @default(cuid())
+  draftId   String
+  title     String?
+  body      String
+  hashtags  String[]
+  /// AI | EDIT | REGENERATE
+  source    String
+  editedBy  String
+  createdAt DateTime @default(now())
+
+  draft     SocialContentDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId, createdAt])
+  @@map("social_draft_revisions")
+}
+
+model MarketingStrategy {
+  id          String         @id @default(cuid())
+  /// STRATEGY | ACQUISITION | SEO_PLAN
+  kind        String         @default("STRATEGY")
+  title       String
+  objective   String
+  audience    String?
+  /// [{ kind: "VERIFIED" | "ASSUMPTION" | "ESTIMATE", text }]
+  evidence    Json           @default("[]")
+  /// [{ title, detail, priority, effort, expectedOutcome, measurement, resources, status }]
+  items       Json           @default("[]")
+  kpis        Json           @default("[]")
+  status      StrategyStatus @default(DRAFT)
+  origin      String         @default("AI")
+  generatedByTaskId String?
+  createdBy   String
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([kind, status])
+  @@index([createdAt])
+  @@map("marketing_strategies")
+}
+
+model MarketingCampaign {
+  id             String         @id @default(cuid())
+  name           String
+  objective      String
+  audience       String?
+  market         String?
+  service        String?
+  channel        String?
+  startDate      DateTime?
+  endDate        DateTime?
+  /// Whole currency units. A PLANNING figure — nothing here ever spends money.
+  budgetAmount   Int?
+  budgetCurrency String?
+  /// [{ title, dueDate?, done }]
+  activities     Json           @default("[]")
+  successMetrics String?
+  status         CampaignStatus @default(DRAFT)
+  notes          String?
+  results        String?
+  createdBy      String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  drafts         SocialContentDraft[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("marketing_campaigns")
+}
+
+/// Who changed what, for sensitive Digital Marketing actions (approvals,
+/// status changes, deletions, audits started, retries). Rules/instructions
+/// changes are audited by AgentConfigVersion. Holds ids and short metadata only.
+model MarketingAuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String?
+  actor      String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("marketing_audit_logs")
 }
 
 /// Phase 3: AI Client Handling Agent. One row per chat widget session.

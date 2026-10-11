@@ -361,16 +361,17 @@ describe('prompt composition', () => {
 })
 
 describe('bootstrap defaults', () => {
-  it('seeds both agents once; a later run never overwrites an admin\'s saved edit', async () => {
+  it('seeds every agent once; a later run never overwrites an admin\'s saved edit', async () => {
     await bootstrapAgentConfigs()
     expect(tables.peekConfig('CUSTOMER_HANDLER')).toMatchObject({ version: 1, rules: CH_DEFAULT.rules })
     expect(tables.peekConfig('LEAD_FINDER')).toMatchObject({ version: 1, instructions: LF_DEFAULT.instructions })
+    expect(tables.peekConfig('DIGITAL_MARKETING')).toMatchObject({ version: 1, instructions: getAgentDefaults('DIGITAL_MARKETING').instructions })
     expect(tables.peekVersions('LEAD_FINDER')).toHaveLength(1)
 
     tables.setConfig('LEAD_FINDER', { rules: 'admin edit', version: 4 })
     await bootstrapAgentConfigs()
     expect(tables.peekConfig('LEAD_FINDER')).toMatchObject({ rules: 'admin edit', version: 4 })
-    expect(tables.agentConfig.create).toHaveBeenCalledTimes(2) // only the two initial inserts
+    expect(tables.agentConfig.create).toHaveBeenCalledTimes(3) // only the three initial inserts (one per agent)
   })
 
   it('survives two simultaneous first requests (unique-violation race) by re-reading the winner', async () => {

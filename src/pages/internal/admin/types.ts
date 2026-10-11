@@ -144,10 +144,10 @@ export interface AdminOverview {
   }
 }
 
-export type AgentSlug = 'customer-handler' | 'lead-finder'
+export type AgentSlug = 'customer-handler' | 'lead-finder' | 'digital-marketing'
 
 export interface AgentConfig {
-  agentKey: 'CUSTOMER_HANDLER' | 'LEAD_FINDER'
+  agentKey: 'CUSTOMER_HANDLER' | 'LEAD_FINDER' | 'DIGITAL_MARKETING'
   displayName: string
   rules: string
   instructions: string

@@ -90,6 +90,18 @@ export const aiAssistantRateLimiter = rateLimit({
 })
 
 /**
+ * Applied to every Digital Marketing endpoint that starts an expensive task
+ * (AI generation, SEO audit, retry). Same per-IP approach as the other
+ * limiters; the number of tasks running at once is capped separately in
+ * marketingTask.service.ts.
+ */
+export const marketingTaskRateLimiter = limiter(
+  env.MARKETING_TASK_RATE_LIMIT_WINDOW_MS,
+  env.MARKETING_TASK_RATE_LIMIT_MAX,
+  'Too many marketing tasks started. Please wait a moment and try again.',
+)
+
+/**
  * Applied to the Admin Dashboard's agent-configuration writes (save,
  * restore). Admin-only and low-volume by nature; this just bounds a
  * runaway client or a stolen-session script from churning the audit

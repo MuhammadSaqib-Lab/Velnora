@@ -10,6 +10,7 @@ import {
 } from '../controllers/adminClientLeads.controller.js'
 import { deleteReviewById, getAdminReviews, patchReviewStatus } from '../controllers/adminReviews.controller.js'
 import { adminAgentConfigRouter } from './adminAgentConfig.routes.js'
+import { adminMarketingRouter } from './adminMarketing.routes.js'
 import { aiAssistantRateLimiter } from '../middleware/rateLimiter.js'
 import { requireAdminSession } from '../middleware/requireAdminSession.js'
 import { requireAiAssistantEnabled } from '../middleware/requireAiAssistantEnabled.js'
@@ -49,6 +50,10 @@ adminRouter.get('/overview', asyncHandler(getAdminOverview))
 // Finder agents — configuration only, never permissions. See
 // adminAgentConfig.routes.ts.
 adminRouter.use('/agents', adminAgentConfigRouter)
+
+// Digital Marketing Agent: SEO workspace, social drafts, strategies, campaigns,
+// task history. Drafts/plans/reports only — nothing publishes, sends or spends.
+adminRouter.use('/marketing', adminMarketingRouter)
 
 adminRouter.get('/client-leads', validateQuery(clientLeadListQuerySchema), asyncHandler(getClientLeads))
 adminRouter.get('/client-leads/:id', asyncHandler(getClientLeadById))

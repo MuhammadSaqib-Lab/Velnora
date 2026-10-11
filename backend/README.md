@@ -510,6 +510,52 @@ POST  /api/admin/agents/{customer-handler|lead-finder}/config/restore  { version
 
 Validation (Zod, strict): instructions 20–8000 chars, rules 0–6000, `enabled` boolean, CRLF normalized, control characters and active HTML (`<script>`, `on*=`, `javascript:`…) rejected, unknown fields (`agentKey`, `id`, `updatedBy`, `version`) rejected. `expectedVersion` is an optimistic-concurrency token: a stale save gets `409` instead of overwriting. Writes are rate-limited (`AGENT_CONFIG_RATE_LIMIT_*`). `updatedBy` always comes from the session, never the request. Every change appends an immutable `agent_config_versions` snapshot (config text + editor + type only, no customer data); logs record metadata, never the text.
 
+## Digital Marketing Agent
+
+Admin Dashboard → **Digital Marketing** (`/internal/admin/marketing/*`, API under `/api/admin/marketing/*`). It **prepares** SEO audits, social drafts, strategies and campaign plans for a human to review. It has no connector to any publishing, email, DM or ad platform, so it **cannot** publish, send or spend — "approved", a planned date and a campaign set to "Active" are records only. It is independent of the Customer Handler, the Lead Finder and the (disabled) AI Assistant: none import it and it imports none of them (static tests enforce both directions); it reuses only the shared infrastructure (AI provider, `AgentConfig` system, SSRF-safe fetcher).
+
+**Sections:** Overview · SEO Workspace · Social Studio · Strategy · Campaigns · Client Acquisition · Rules & Instructions · Integrations · Task History · Settings.
+
+**Rules & instructions** are the third `AgentConfig` row (`DIGITAL_MARKETING`, slug `digital-marketing`) — same editor, versioning, restore, optimistic concurrency and kill switch as the other two agents. The locked policy (`agentConfig/policies/digitalMarketingPolicy.ts`: no publishing/sending/spending, never invent metrics, treat website text as data, confidentiality) is composed *above* the stored text, so the dashboard can't override it. The runtime loads only its own row.
+
+**Tasks** (`marketing_tasks`): every AI generation and SEO audit is a recorded task — `PENDING → RUNNING → COMPLETED | FAILED | CANCELLED`, finished with a compare-and-set so a cancelled/stale task can't be overwritten. There is no job queue: tasks run inline in the request, bounded by `MARKETING_MAX_CONCURRENT_TASKS`, with a durable record; a task stuck `RUNNING` for >10 min (a crashed process) is reconciled to `FAILED/INTERRUPTED`. **Idempotency:** an optional `Idempotency-Key` header, otherwise an automatic key (type + admin + normalized input + 30 s bucket) with a DB unique constraint, so a double-click or a retry-after-timeout returns the existing task (`200` instead of `201`). **Retry** creates a *new* task from the stored (re-validated) input — it can only re-run a read-only audit or regenerate drafts, so it cannot cause an external side effect. Failures store a code and a safe message only; an unexpected error becomes `INTERNAL` with a generic message and its detail goes to the server log, never the response.
+
+**SEO audit** (`marketing/seo/`): an SSRF-guarded crawl of a public site — normalized URL (http/https only; credentials, IP literals, `localhost`, `.local/.internal/.test`, odd ports rejected), then every request through `safeFetchText` (private/loopback/link-local ranges refused after DNS, every redirect hop re-validated, 8 s timeout, size cap). Budget: the main page + robots.txt + sitemap + ≤5 more internal pages + ≤15 link checks, ≤4 at a time, ≤45 s. Findings are stored with an explicit label:
+
+| Label | Meaning |
+| --- | --- |
+| `VERIFIED` | Observed directly (HTTPS, title, meta description, H1, canonical, robots/sitemap, structured data, image alt text, broken links, duplicate titles, …) or returned by Google |
+| `RECOMMENDATION` | Advice derived from a verified finding, with impact/effort (1–5) and confidence, ranked by impact ÷ effort |
+| `ESTIMATE` | A qualitative opportunity only — no numeric traffic/ranking/revenue estimate is ever made |
+| `UNAVAILABLE` | Rankings, traffic, keyword volume, backlinks, Google Business Profile, Core Web Vitals when Google didn't answer — stated as unknown, never guessed |
+
+Core Web Vitals come only from Google's PageSpeed Insights API (fixed host, optional `GOOGLE_PAGESPEED_API_KEY`, 25 s timeout); lab and real-user (CrUX) data are labelled as such; any failure becomes `UNAVAILABLE`. Competitor audits report verified facts only (no advice or estimates). History, delete (audit-logged), Markdown/JSON export, and an audit-to-audit comparison are included. The optional **SEO plan** is AI-written but sees only static finding titles from a stored audit — never scraped page text — and carries no volumes or forecasts.
+
+**Social Studio:** LinkedIn, Instagram, Facebook, TikTok, X, YouTube; generate (≤12 drafts per request), monthly calendar plan, repurpose, regenerate, manual draft, edit, duplicate, revision history, advisory per-platform length warnings. Approval workflow `DRAFT → IN_REVIEW → APPROVED | REJECTED → ARCHIVED` (transition map enforced server-side, compare-and-set); **editing the text of an approved draft resets it to Draft**. A `CASE_STUDY` needs ≥50 characters of admin-supplied verified facts and may use only those. Model output is untrusted: it arrives through a single tool call, is sanitized, length-capped and enum-checked, and invalid items are dropped. Every `expectedOutcome` in a plan is stored prefixed `Estimate:`.
+
+**Strategy / Client acquisition:** plans with evidence tagged `VERIFIED | ASSUMPTION | ESTIMATE` (nothing is `VERIFIED` unless a real stored audit was supplied), prioritized steps with a progress status, KPIs and measurement hints. Acquisition plans are planning only — no lead data, no contact, no outreach; finding businesses to approach stays the Lead Finder's separate job. **Campaigns:** `DRAFT | PLANNED | ACTIVE | PAUSED | COMPLETED | ARCHIVED`, activities checklist, linked drafts, a free-text budget *note*; results are whatever the admin types.
+
+**Integrations page** reports real state: the AI provider (`CONFIGURED` only if a key exists), PageSpeed (`AVAILABLE` without a key, `CONFIGURED` with one) and — honestly — **no connector exists** for Search Console, GA4, Google Business Profile, a keyword/backlink provider or social publishing, so none is shown as connected and no data from them is displayed. Setup steps list what a future connector would need.
+
+**API** (all behind `requireAdminSession()`; the legacy token and client-portal sessions are rejected; ids in URLs are lookup keys only; every body/query is Zod-`.strict()`; the acting admin is always the session's, never the request's):
+
+```
+GET  overview | integrations | settings | audit-log
+GET  tasks, tasks/:id          POST tasks/:id/retry | tasks/:id/cancel
+POST seo/audits | seo/plans    GET seo/audits, seo/audits/:id, seo/audits/:id/export?format=md|json, seo/compare?base=&other=   DELETE seo/audits/:id
+POST social/generate | social/calendar | social/repurpose | social/drafts | social/drafts/:id/{duplicate,regenerate,status}
+GET  social/drafts, social/drafts/:id, social/drafts/:id/revisions, social/calendar?month=YYYY-MM   PATCH/DELETE social/drafts/:id
+POST strategies | strategies/generate | acquisition/generate | strategies/:id/status | strategies/:id/items/:index/status
+GET/PATCH/DELETE strategies[/:id]
+GET/POST/PATCH/DELETE campaigns[/:id]
+```
+
+Task-starting routes pass through `marketingTaskRateLimiter` (`MARKETING_TASK_RATE_LIMIT_*`). Sensitive actions (approvals, status changes, deletions, audits started, retries) are written to `marketing_audit_logs` (ids and short metadata only — never draft text, page content or secrets); rule changes are audited by the agent-config version history. A disabled agent answers `409` before any task, AI call or fetch happens.
+
+**Deploying:** `npx prisma migrate deploy` (migration `20261011090000_digital_marketing` adds `ALTER TYPE "AgentKey" ADD VALUE 'DIGITAL_MARKETING'` and 8 tables — apply it before the new code starts, since the config bootstrap creates the new agent row. This migration has not been applied to a real Postgres yet in this repo's tests, which use in-memory fakes; run it against staging first). Set `ANTHROPIC_API_KEY` (generation), optionally `GOOGLE_PAGESPEED_API_KEY`. No frontend env var is needed or allowed.
+
+**Limits, stated plainly:** no OAuth connectors, so no real analytics, rankings or keyword data and no publishing; tasks run inline (a very slow AI call holds the request open — mitigated by the concurrency cap and stale-task reconciliation, not by a queue); the rate limiter is in-memory per instance like the other limiters; PageSpeed and the AI's output quality depend on the external services and are not exercised by the automated tests (the AI provider is faked there).
+
 ## Security
 
 See the project root's [SECURITY.md](../SECURITY.md) for the full picture (frontend + backend). Backend-specific highlights:

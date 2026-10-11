@@ -33,6 +33,11 @@ function resolveApiBaseUrl(): string {
 
 const API_BASE_URL = resolveApiBaseUrl()
 
+/** Absolute-from-root URL for a backend path, for plain links (e.g. a file download that carries the session cookie). */
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`
+}
+
 export interface ApiSuccess<T = unknown> {
   success: true
   message: string
