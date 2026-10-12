@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'motion/react'
+import { m, useReducedMotion } from 'motion/react'
 import { services } from '@/data/services'
 
 const RADIUS_PERCENT = 40
@@ -28,7 +28,7 @@ export function SceneFallback() {
         const Icon = service.icon
 
         return (
-          <motion.div
+          <m.div
             key={service.title}
             className="absolute -translate-x-1/2 -translate-y-1/2"
             style={{ left: `${left}%`, top: `${top}%` }}
@@ -40,7 +40,7 @@ export function SceneFallback() {
               <Icon className="h-3 w-3 shrink-0" strokeWidth={2} />
               {service.title}
             </div>
-          </motion.div>
+          </m.div>
         )
       })}
     </div>

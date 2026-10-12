@@ -1,24 +1,15 @@
-import { About } from '@/sections/About'
-import { Contact } from '@/sections/Contact'
-import { CostEstimator } from '@/sections/CostEstimator'
-import { CTASection } from '@/sections/CTASection'
-import { FAQ } from '@/sections/FAQ'
-import { FinalCTA } from '@/sections/FinalCTA'
-import { Founder } from '@/sections/Founder'
-import { FreeAudit } from '@/sections/FreeAudit'
+import { DeferredHomeSections } from '@/components/DeferredHomeSections'
 import { Hero } from '@/sections/Hero'
 import { LogoStrip } from '@/sections/LogoStrip'
-import { Process } from '@/sections/Process'
-import { Reviews } from '@/sections/Reviews'
-import { SEOSection } from '@/sections/SEOSection'
 import { Services } from '@/sections/Services'
-import { TechCapabilities } from '@/sections/TechCapabilities'
-import { WebDevelopment } from '@/sections/WebDevelopment'
-import { WhyChooseUs } from '@/sections/WhyChooseUs'
-import { Work } from '@/sections/Work'
 import { Seo } from '@/lib/seo'
 import { pageSeo } from '@/lib/seoConfig'
 
+/**
+ * The first screen and the services section render with the page; every
+ * section after them (see src/sections/belowTheFold.tsx) is loaded and
+ * mounted progressively by DeferredHomeSections.
+ */
 export function Home() {
   return (
     <>
@@ -26,21 +17,7 @@ export function Home() {
       <Hero />
       <LogoStrip />
       <Services />
-      <TechCapabilities />
-      <WebDevelopment />
-      <SEOSection />
-      <FreeAudit />
-      <Process />
-      <Work />
-      <About />
-      <Founder />
-      <WhyChooseUs />
-      <Reviews />
-      <CTASection />
-      <FAQ />
-      <CostEstimator />
-      <Contact />
-      <FinalCTA />
+      <DeferredHomeSections />
     </>
   )
 }

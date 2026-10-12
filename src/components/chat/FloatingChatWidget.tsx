@@ -1,5 +1,5 @@
 import { MessageCircle, Send, X } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { fieldInputClass } from '@/components/ui/fieldStyles'
@@ -136,7 +136,7 @@ export function FloatingChatWidget() {
     <div className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
       <AnimatePresence>
         {isOpen ? (
-          <motion.div
+          <m.div
             role="dialog"
             aria-label="Chat with Velnora's AI Consultant"
             onKeyDown={handleKeyDown}
@@ -227,13 +227,13 @@ export function FloatingChatWidget() {
                 </a>
               </p>
             </div>
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
 
       <AnimatePresence>
         {showGreeting && !isOpen ? (
-          <motion.div
+          <m.div
             initial={reduce ? false : { opacity: 0, y: 10, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.96 }}
@@ -255,7 +255,7 @@ export function FloatingChatWidget() {
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
 

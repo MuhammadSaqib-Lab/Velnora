@@ -170,6 +170,11 @@
     text-wrap: balance;
   }
 
+  /* See DeferredHomeSections: the footer must not become the scroll anchor while sections mount above it. */
+  footer {
+    overflow-anchor: none;
+  }
+
   .noise-overlay {
     position: fixed;
     inset: 0;

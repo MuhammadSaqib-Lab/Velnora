@@ -43,6 +43,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!--
+      The three Geist weights the first screen uses. Without these the browser
+      only discovers the font files after React has rendered text, so they
+      arrive late and force a second full-page text layout when they swap in.
+      Vite rewrites these paths to the hashed build filenames.
+    -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/node_modules/@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2" />
+
+    <!--
       Structured data (Organization/ProfessionalService, WebSite, and the
       service catalog). Static and developer-controlled only, mirrors
       src/data/services.ts, never inject user input here. If you edit the

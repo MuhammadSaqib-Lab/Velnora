@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { CLIENT_LOGIN_HREF, CLIENT_LOGIN_LABEL, NAV_CTA_LABEL, navItems, START_PROJECT_HREF } from '@/data/nav'
@@ -19,7 +19,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           className="fixed inset-x-0 top-[72px] bottom-0 z-40 bg-[var(--color-canvas)]/98 backdrop-blur-xl lg:hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -32,7 +32,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
           >
             <ul className="flex flex-col">
               {navItems.map((item, i) => (
-                <motion.li
+                <m.li
                   key={item.href}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -45,7 +45,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   >
                     {item.label}
                   </a>
-                </motion.li>
+                </m.li>
               ))}
             </ul>
             <Button href={START_PROJECT_HREF} size="lg" className="w-full" onClick={onClose}>
@@ -55,7 +55,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               {CLIENT_LOGIN_LABEL}
             </Button>
           </nav>
-        </motion.div>
+        </m.div>
       ) : null}
     </AnimatePresence>
   )

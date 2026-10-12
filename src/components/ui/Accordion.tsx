@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -45,7 +45,7 @@ export function Accordion({ items }: AccordionProps) {
             </button>
             <AnimatePresence initial={false}>
               {isOpen ? (
-                <motion.div
+                <m.div
                   id={panelId}
                   role="region"
                   initial={reduce ? false : { height: 0, opacity: 0 }}
@@ -57,7 +57,7 @@ export function Accordion({ items }: AccordionProps) {
                   <p className="px-6 pb-5 text-sm leading-relaxed text-[var(--color-ink-muted)]">
                     {item.answer}
                   </p>
-                </motion.div>
+                </m.div>
               ) : null}
             </AnimatePresence>
           </div>

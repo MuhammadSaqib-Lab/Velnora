@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { MotionProvider } from '@/components/MotionProvider'
 import { FloatingChatWidget } from '@/components/chat/FloatingChatWidget'
 import { Footer } from '@/components/layout/Footer'
 import { AI_ASSISTANT_ENABLED } from '@/config/features'
@@ -94,6 +95,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <HelmetProvider>
+        <MotionProvider>
         <BrowserRouter>
           <div className="noise-overlay" aria-hidden="true" />
           <PublicChrome>
@@ -186,6 +188,7 @@ export default function App() {
             </Routes>
           </PublicChrome>
         </BrowserRouter>
+        </MotionProvider>
       </HelmetProvider>
     </ErrorBoundary>
   )
