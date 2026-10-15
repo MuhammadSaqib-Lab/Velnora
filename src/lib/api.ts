@@ -31,6 +31,8 @@ function resolveApiBaseUrl(): string {
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
 }
 
+import { isAdminDataPath, notifyAdminDataChanged, notifyAdminSessionRejected } from '@/lib/adminEvents'
+
 const API_BASE_URL = resolveApiBaseUrl()
 
 /** Absolute-from-root URL for a backend path, for plain links (e.g. a file download that carries the session cookie). */
@@ -61,9 +63,105 @@ export type ApiResult<T = unknown> = ApiSuccess<T> | ApiErrorResponse
  * (non-throwing) ApiErrorResponse instead.
  */
 export class ApiNetworkError extends Error {
-  constructor() {
-    super('Could not reach the server. Check your connection and try again.')
+  constructor(message = 'Could not reach the server. Check your connection and try again.') {
+    super(message)
     this.name = 'ApiNetworkError'
+  }
+}
+
+/**
+ * The request did not finish within its time limit. A subclass of
+ * ApiNetworkError on purpose: every existing `err instanceof ApiNetworkError`
+ * handler already shows err.message, so a stalled request now ends in a
+ * readable error with a retry instead of an endless spinner. The usual cause
+ * is a backend that was idle and is still starting up.
+ */
+export class ApiTimeoutError extends ApiNetworkError {
+  constructor() {
+    super('The server is taking too long to respond — it may be starting up. Please try again in a moment.')
+    this.name = 'ApiTimeoutError'
+  }
+}
+
+/** The caller cancelled the request (e.g. the component unmounted). Not an error worth showing. */
+export class ApiAbortedError extends Error {
+  constructor() {
+    super('Request cancelled.')
+    this.name = 'ApiAbortedError'
+  }
+}
+
+/** Reads are quick; 30 s still covers a cold backend. */
+export const DEFAULT_READ_TIMEOUT_MS = 30_000
+/** Writes include slow AI generations and audits (up to ~1 min server-side), but are still bounded. */
+export const DEFAULT_WRITE_TIMEOUT_MS = 120_000
+
+export interface RequestOptions {
+  /** Overrides the default time limit for this call. */
+  timeoutMs?: number
+  /** Lets the caller cancel the request. */
+  signal?: AbortSignal
+}
+
+async function request<T>(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body: unknown,
+  headers: Record<string, string> | undefined,
+  options: RequestOptions = {},
+): Promise<ApiResult<T>> {
+  const controller = new AbortController()
+  let timedOut = false
+  const timeoutMs = options.timeoutMs ?? (method === 'GET' ? DEFAULT_READ_TIMEOUT_MS : DEFAULT_WRITE_TIMEOUT_MS)
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+  const abortFromCaller = () => controller.abort()
+  options.signal?.addEventListener('abort', abortFromCaller, { once: true })
+  if (options.signal?.aborted) controller.abort()
+
+  const failure = (): Error =>
+    options.signal?.aborted ? new ApiAbortedError() : timedOut ? new ApiTimeoutError() : new ApiNetworkError()
+
+  try {
+    let response: Response
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        // Always sent: harmless for the public, cookie-less endpoints
+        // (contact, project inquiry, AI chat), and required for the Admin
+        // Dashboard's httpOnly session cookie (POST /api/auth/admin/login,
+        // /logout, and every /api/admin/* call) to flow — see backend
+        // SECURITY.md's "Admin Dashboard security" section.
+        credentials: 'include',
+        headers: body === undefined ? headers : { 'Content-Type': 'application/json', ...headers },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller.signal,
+      })
+    } catch {
+      throw failure()
+    }
+
+    // The same limit covers reading the body: a response that starts and then stalls must not hang either.
+    let result: ApiResult<T>
+    try {
+      result = await parseApiResult<T>(response)
+    } catch {
+      throw failure()
+    }
+    // A body read cut short by our own abort is a timeout / cancellation, not a vague server error.
+    if (!result.success && controller.signal.aborted) throw failure()
+
+    // The session is gone: let the admin shell send the user to the login page.
+    if (!result.success && result.status === 401 && path.startsWith('/admin/')) notifyAdminSessionRejected()
+
+    // A successful write may change what is waiting for an admin (sidebar counts).
+    if (method !== 'GET' && result.success && isAdminDataPath(path)) notifyAdminDataChanged()
+    return result
+  } finally {
+    clearTimeout(timer)
+    options.signal?.removeEventListener('abort', abortFromCaller)
   }
 }
 
@@ -77,81 +175,35 @@ async function parseApiResult<T>(response: Response): Promise<ApiResult<T>> {
   }
 }
 
-export async function apiPost<T = unknown>(
+export function apiPost<T = unknown>(
   path: string,
   body: unknown,
   headers?: Record<string, string>,
+  options?: RequestOptions,
 ): Promise<ApiResult<T>> {
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      // Always sent: harmless for the public, cookie-less endpoints
-      // (contact, project inquiry, AI chat), and required for the Admin
-      // Dashboard's httpOnly session cookie (POST /api/auth/admin/login,
-      // /logout, and every /api/admin/* write) to actually flow on a
-      // cross-origin request — see backend SECURITY.md's "Admin
-      // Dashboard security" section for the CORS/cookie reasoning.
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(body),
-    })
-  } catch {
-    throw new ApiNetworkError()
-  }
-
-  return parseApiResult<T>(response)
+  return request<T>('POST', path, body, headers, options)
 }
 
-export async function apiGet<T = unknown>(path: string, headers?: Record<string, string>): Promise<ApiResult<T>> {
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include', headers })
-  } catch {
-    throw new ApiNetworkError()
-  }
-
-  return parseApiResult<T>(response)
+export function apiGet<T = unknown>(path: string, headers?: Record<string, string>, options?: RequestOptions): Promise<ApiResult<T>> {
+  return request<T>('GET', path, undefined, headers, options)
 }
 
 /**
  * Used only by internal pages (src/pages/internal/) for PATCH requests —
  * no public form needs PATCH today.
  */
-export async function apiPatch<T = unknown>(
+export function apiPatch<T = unknown>(
   path: string,
   body: unknown,
   headers?: Record<string, string>,
+  options?: RequestOptions,
 ): Promise<ApiResult<T>> {
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify(body),
-    })
-  } catch {
-    throw new ApiNetworkError()
-  }
-
-  return parseApiResult<T>(response)
+  return request<T>('PATCH', path, body, headers, options)
 }
 
 /**
  * Used only by internal admin pages — no public form needs DELETE today.
  */
-export async function apiDelete<T = unknown>(path: string, headers?: Record<string, string>): Promise<ApiResult<T>> {
-  let response: Response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers,
-    })
-  } catch {
-    throw new ApiNetworkError()
-  }
-
-  return parseApiResult<T>(response)
+export function apiDelete<T = unknown>(path: string, headers?: Record<string, string>, options?: RequestOptions): Promise<ApiResult<T>> {
+  return request<T>('DELETE', path, undefined, headers, options)
 }

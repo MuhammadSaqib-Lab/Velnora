@@ -123,7 +123,7 @@ export function Reviews() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => void load()} />
         ) : !result || result.reviews.length === 0 ? (
           <EmptyState message="No reviews match these filters." />
         ) : (

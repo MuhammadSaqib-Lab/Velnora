@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getAdminProjectById, getAdminProjects, patchAdminProjectStatus } from '../controllers/adminProjects.controller.js'
+import { getAdminCounts } from '../controllers/adminCounts.controller.js'
 import { getAdminOverview } from '../controllers/adminOverview.controller.js'
 import { postAssistantCommand, postAssistantSpeak } from '../controllers/adminAiAssistant.controller.js'
 import {
@@ -45,6 +46,9 @@ export const adminRouter = Router()
 adminRouter.use(requireAdminSession())
 
 adminRouter.get('/overview', asyncHandler(getAdminOverview))
+
+// Sidebar badge counts (items awaiting an admin, per section) — numbers only.
+adminRouter.get('/counts', asyncHandler(getAdminCounts))
 
 // Editable behavior (rules/instructions) of the Customer Handler and Lead
 // Finder agents — configuration only, never permissions. See

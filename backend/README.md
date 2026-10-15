@@ -419,6 +419,37 @@ See SECURITY.md's "Admin Dashboard security" section for the full threat-model w
 
 `/internal/lead-finder` (the original minimal test page) is untouched and still fully functional, still gated by the legacy shared token via `AdminTokenGate.tsx`/`useAdminToken.ts` — it now links to the dashboard, but nothing was removed from it. `/internal/admin/*` is instead gated by `useAdminSession()`, which checks `GET /api/auth/admin/me` and redirects to `/admin/login` if it's not authenticated — a UX convenience only, the backend independently re-verifies every request regardless. All admin/login routes are lazy-loaded (`React.lazy`) per page, so the public homepage's bundle is unaffected and a visitor never pays for this code unless they navigate to `/admin/*` or `/internal/*`.
 
+### Dashboard load performance and sidebar counts
+
+**What made the dashboard slow to open** (reproduced in a real browser against this backend, with simulated latency — numbers below): the shell waited for `GET /api/auth/admin/me` before rendering anything, the page's own requests only started after that, the request layer had **no timeout** (a stalled backend, e.g. a Render instance still starting up, meant a spinner forever), and any failure of the session check was treated as "signed out". Server side, every authenticated request cost two database round trips plus a write (`lastUsedAt`), and the overview ran ten queries where eight sufficed.
+
+**Server**
+- `getAdminBySessionToken` (`adminAuth.service.ts`) selects only the columns it needs (the password hash is never loaded), writes `lastUsedAt` at most every 5 minutes, shares **one** lookup between concurrent requests for the same token, and remembers a *successful* verification for 10 s (`SESSION_CACHE_TTL_MS`). Keyed by the token's SHA-256 hash, never cached on failure, never served past the session's own expiry, evicted immediately by logout (including a lookup already in flight). It is per process: a session revoked another way (deleted in the database, logged out via a different instance) can stay usable for at most those 10 s.
+- `GET /api/admin/overview` derives its totals from the status groupings it already runs (two fewer queries). Both dashboard endpoints send `Cache-Control: no-store`.
+- Migration `20261015090000_admin_dashboard_performance` adds `leads(createdAt)`: the overview lists the newest leads (`ORDER BY "createdAt" DESC LIMIT 5`, twice) and only status/score/priority were indexed. Chosen from reading the query patterns; no `EXPLAIN` was run (there is no database in this repo's test setup), so run it against a real database if you want proof. Apply with `npx prisma migrate deploy`.
+
+**`GET /api/admin/counts`** (admin session only; the legacy token and client sessions are rejected) returns the numbers behind the sidebar badges — nothing else, no record is ever read:
+
+| Field | Data source | Counts |
+| --- | --- | --- |
+| `clientAgentLeads` | `QualifiedLead.status` | `NEW` |
+| `leadFinder` | `Lead.status` | `NEW` + `RESEARCHED` — discovery saves leads as `RESEARCHED`, so counting only `NEW` would always read 0; qualified / drafted / contacted / dismissed leads are history and are not counted |
+| `projects` | `Project.status` | `NEW_REQUEST` (submitted, nobody has picked it up) |
+| `reviews` | `Review.status` | `PENDING` (awaiting moderation) |
+| `digitalMarketing` | `SocialContentDraft.status` | `IN_REVIEW` (sent for approval). Strategies and campaigns have no approval step, so they are not counted |
+
+Each is one indexed `COUNT` on a status column (five queries, in parallel). A section whose query fails is `null` ("unknown"), never 0; if all five fail the request is a 500. The response shape is validated by `sidebarCountsSchema`; the frontend mirrors it in `src/lib/sidebarCounts.ts` and rejects anything that doesn't match.
+
+**Frontend**
+- `AdminShell` renders the sidebar immediately for a browser that had a working session (a non-secret `localStorage` hint — it carries no identity, grants nothing, and is cleared on a 401 or logout; every data request is still checked by the server). Page requests run in parallel with the session check; lazy page chunks load *inside* the layout (a Suspense boundary around the outlet) so the sidebar never disappears.
+- `src/lib/api.ts`: every request has a time limit (reads 30 s, writes 120 s because AI generations are slow, the session check 20 s, counts 15 s). A stall ends in `ApiTimeoutError` (a subclass of `ApiNetworkError`, so existing handlers show its message). Only a 401 sends the admin to the login page; a slow or failing server shows an error with **Retry**. A 401 from any admin call mid-session redirects to sign-in.
+- **The badges are refreshed by periodic polling, not pushed in real time.** `src/lib/countsPoller.ts` polls every 60 s while the tab is visible (none while hidden; one refresh when it returns if the data is stale), one request at a time, backing off after failures (to 5 min), and refreshes within ~0.4 s of the admin's own successful write to `/admin/*` or `/leads*` (api.ts announces it). A visitor submitting a review or a client submitting a project therefore shows up within about a minute.
+- Display rules (`src/lib/countBadge.ts`): no badge for 0 or an unknown count, `99+` above 99, plus a screen-reader sentence ("5 leads awaiting review") so meaning never depends on the pill alone.
+
+**Measured** (real browser, this backend with in-memory tables and *simulated* 400 ms per request + 50 ms per query; 3 loads, medians; not production numbers): sidebar visible 1144 → 396 ms, overview data 1618 → 894 ms. At 800 ms + 150 ms: sidebar 1545 → 413 ms, data 2534 → 1388 ms. Failure behavior, same rig: a hung session check was an endless spinner (and stayed one after the server recovered) and is now a sidebar plus an error with Retry after 20 s; backend down used to bounce a signed-in admin to the login page and now shows an error with Retry.
+
+**Unverified here:** real database timings, and whether the production backend sleeps when idle (check the instance type in the Render dashboard; an idle instance's first request can take tens of seconds — the new timeouts and Retry make that survivable, they do not remove it. A paid instance, or an external uptime check hitting `/api/health` every few minutes, removes it).
+
 ## AI Assistant (temporarily disabled)
 
 The Admin Dashboard's AI Assistant / Command Center / voice console is **TEMPORARILY DISABLED** and has no runtime role. Its code is intentionally kept intact for a future phase. The Customer Handler and Lead Finder agents never depended on it and are unaffected.

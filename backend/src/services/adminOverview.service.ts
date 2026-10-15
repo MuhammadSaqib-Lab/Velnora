@@ -11,10 +11,8 @@ const RECENT_LIMIT = 5
  * worse failure mode than an explicit error state).
  */
 export async function getOverview() {
-  let leadCounts,
-    leadByStatus,
+  let leadByStatus,
     leadByPriority,
-    clientLeadCounts,
     clientLeadByStatus,
     clientLeadByIntent,
     recentLeads,
@@ -24,10 +22,8 @@ export async function getOverview() {
 
   try {
     ;[
-      leadCounts,
       leadByStatus,
       leadByPriority,
-      clientLeadCounts,
       clientLeadByStatus,
       clientLeadByIntent,
       recentLeads,
@@ -35,10 +31,10 @@ export async function getOverview() {
       recentDiscoveries,
       recentOutreach,
     ] = await Promise.all([
-      prisma.lead.count(),
+      // Totals are derived from these groupings instead of separate count() queries: every row has
+      // exactly one status, so the sum IS the total, and it saves two round trips per page load.
       prisma.lead.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.lead.groupBy({ by: ['priority'], _count: { _all: true } }),
-      prisma.qualifiedLead.count(),
       prisma.qualifiedLead.groupBy({ by: ['status'], _count: { _all: true } }),
       prisma.qualifiedLead.groupBy({ by: ['intent'], _count: { _all: true } }),
       prisma.lead.findMany({
@@ -74,6 +70,10 @@ export async function getOverview() {
     Object.fromEntries(rows.map((r) => [r.priority ?? 'UNSCORED', r._count._all]))
   const intentMap = (rows: Array<{ intent: string; _count: { _all: number } }>) =>
     Object.fromEntries(rows.map((r) => [r.intent, r._count._all]))
+
+  const sumCounts = (rows: Array<{ _count: { _all: number } }>) => rows.reduce((total, row) => total + row._count._all, 0)
+  const leadCounts = sumCounts(leadByStatus as never)
+  const clientLeadCounts = sumCounts(clientLeadByStatus as never)
 
   const leadStatusCounts = statusMap(leadByStatus as never)
   const leadPriorityCounts = priorityMap(leadByPriority as never)

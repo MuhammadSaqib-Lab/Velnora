@@ -161,11 +161,106 @@ export async function loginAdmin(
  */
 export async function logoutAdmin(sessionToken: string): Promise<void> {
   const tokenHash = hashToken(sessionToken)
+  forgetVerifiedSession(tokenHash)
   try {
     await prisma.adminSession.deleteMany({ where: { tokenHash } })
   } catch (error) {
     logger.error('admin.logout.failed', error)
   }
+}
+
+/**
+ * A dashboard page load fires several authenticated requests at once (the
+ * session check, the sidebar counts, the page's own data), and every one of
+ * them used to cost two database round trips plus a write. Verified sessions
+ * are therefore remembered in this process for a few seconds, and concurrent
+ * lookups for the same token share one query.
+ *
+ * Safety properties, each covered by tests:
+ *  - keyed by the token's SHA-256 hash (the raw token is never held), and an
+ *    entry only ever answers for the exact token that produced it;
+ *  - only successful verifications are cached (an unknown/expired token is
+ *    re-checked every time) and an entry is never served past the session's
+ *    own expiry;
+ *  - logging out evicts the entry immediately on this instance;
+ *  - the cache is per process, so a session revoked by other means (deleted
+ *    in the database, or logged out through another instance) stays usable
+ *    for at most SESSION_CACHE_TTL_MS.
+ */
+export const SESSION_CACHE_TTL_MS = 10_000
+const SESSION_CACHE_MAX_ENTRIES = 500
+/** How stale `lastUsedAt` may get before a request bothers to write it again. */
+export const LAST_USED_WRITE_INTERVAL_MS = 5 * 60 * 1000
+
+interface VerifiedSession {
+  admin: AdminSessionUser
+  sessionExpiresAt: number
+  cachedUntil: number
+}
+const verifiedSessions = new Map<string, VerifiedSession>()
+/** One in-flight lookup per token; `ticket` lets a lookup tell whether a logout cancelled it. */
+const pendingLookups = new Map<string, { ticket: symbol; promise: Promise<AdminSessionUser | null> }>()
+
+function forgetVerifiedSession(tokenHash: string) {
+  verifiedSessions.delete(tokenHash)
+  pendingLookups.delete(tokenHash)
+}
+
+/** Test hook: start from a cold cache. */
+export function clearAdminSessionCache() {
+  verifiedSessions.clear()
+  pendingLookups.clear()
+}
+
+function rememberVerifiedSession(tokenHash: string, entry: VerifiedSession) {
+  if (verifiedSessions.size >= SESSION_CACHE_MAX_ENTRIES) {
+    const now = Date.now()
+    for (const [key, value] of verifiedSessions) if (value.cachedUntil <= now) verifiedSessions.delete(key)
+    // Still full of live entries: drop the oldest insertion rather than grow without bound.
+    if (verifiedSessions.size >= SESSION_CACHE_MAX_ENTRIES) {
+      const oldest = verifiedSessions.keys().next().value
+      if (oldest !== undefined) verifiedSessions.delete(oldest)
+    }
+  }
+  verifiedSessions.set(tokenHash, entry)
+}
+
+async function lookupSession(tokenHash: string, isStillCurrent: () => boolean): Promise<AdminSessionUser | null> {
+  let session: { expiresAt: Date; lastUsedAt: Date | null; adminUser: { id: string; email: string } } | null
+  try {
+    // Only the columns the check needs: no password hash is ever loaded here.
+    session = await prisma.adminSession.findUnique({
+      where: { tokenHash },
+      select: { expiresAt: true, lastUsedAt: true, adminUser: { select: { id: true, email: true } } },
+    })
+  } catch (error) {
+    throw new AppError(500, 'A database error occurred while checking your session. Please try again shortly.', undefined, {
+      cause: error,
+    })
+  }
+
+  const now = Date.now()
+  if (!session || session.expiresAt.getTime() <= now) {
+    verifiedSessions.delete(tokenHash)
+    return null
+  }
+
+  // Observability, not authorization: write it at most every few minutes
+  // instead of on every request, and never make a request wait on it.
+  if (!session.lastUsedAt || now - session.lastUsedAt.getTime() > LAST_USED_WRITE_INTERVAL_MS) {
+    prisma.adminSession.update({ where: { tokenHash }, data: { lastUsedAt: new Date(now) } }).catch(() => {})
+  }
+
+  const admin = { id: session.adminUser.id, email: session.adminUser.email }
+  // A logout that landed while this query was running must not be undone by caching its result.
+  if (isStillCurrent()) {
+    rememberVerifiedSession(tokenHash, {
+      admin,
+      sessionExpiresAt: session.expiresAt.getTime(),
+      cachedUntil: now + SESSION_CACHE_TTL_MS,
+    })
+  }
+  return admin
 }
 
 /**
@@ -176,20 +271,18 @@ export async function logoutAdmin(sessionToken: string): Promise<void> {
 export async function getAdminBySessionToken(sessionToken: string): Promise<AdminSessionUser | null> {
   const tokenHash = hashToken(sessionToken)
 
-  let session: { expiresAt: Date; adminUser: { id: string; email: string } } | null
-  try {
-    session = await prisma.adminSession.findUnique({ where: { tokenHash }, include: { adminUser: true } })
-  } catch (error) {
-    throw new AppError(500, 'A database error occurred while checking your session. Please try again shortly.', undefined, {
-      cause: error,
-    })
-  }
+  const cached = verifiedSessions.get(tokenHash)
+  const now = Date.now()
+  if (cached && now < cached.cachedUntil && now < cached.sessionExpiresAt) return { ...cached.admin }
 
-  if (!session || session.expiresAt.getTime() <= Date.now()) return null
+  const pending = pendingLookups.get(tokenHash)
+  if (pending) return pending.promise
 
-  // Fire-and-forget: a session's "last used" timestamp is observability,
-  // not something a request should ever wait on or fail over.
-  prisma.adminSession.update({ where: { tokenHash }, data: { lastUsedAt: new Date() } }).catch(() => {})
-
-  return { id: session.adminUser.id, email: session.adminUser.email }
+  const ticket = Symbol('session-lookup')
+  const promise = lookupSession(tokenHash, () => pendingLookups.get(tokenHash)?.ticket === ticket).finally(() => {
+    // Only clear our own entry: a logout may have replaced or removed it meanwhile.
+    if (pendingLookups.get(tokenHash)?.ticket === ticket) pendingLookups.delete(tokenHash)
+  })
+  pendingLookups.set(tokenHash, { ticket, promise })
+  return promise
 }

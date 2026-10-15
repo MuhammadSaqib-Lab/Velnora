@@ -54,12 +54,12 @@ async function loggedInAgent(app: ReturnType<typeof createApp>) {
 }
 
 function stubHappyPath() {
-  vi.mocked(prisma.lead.count).mockResolvedValue(12)
   vi.mocked(prisma.lead.groupBy).mockImplementation(async ({ by }: { by: string[] }) => {
     if (by[0] === 'status') {
       return [
         { status: 'NEW', _count: { _all: 3 } },
         { status: 'RESEARCHED', _count: { _all: 4 } },
+        { status: 'QUALIFIED', _count: { _all: 2 } },
         { status: 'EMAIL_DRAFTED', _count: { _all: 2 } },
         { status: 'CONVERTED', _count: { _all: 1 } },
       ] as never
@@ -70,7 +70,6 @@ function stubHappyPath() {
       { priority: 'LOW', _count: { _all: 5 } },
     ] as never
   })
-  vi.mocked(prisma.qualifiedLead.count).mockResolvedValue(6)
   vi.mocked(prisma.qualifiedLead.groupBy).mockImplementation(async ({ by }: { by: string[] }) => {
     if (by[0] === 'status') {
       return [
@@ -107,7 +106,10 @@ describe('GET /api/admin/overview', () => {
     const res = await agent.get('/api/admin/overview')
 
     expect(res.status).toBe(200)
-    expect(res.body.data.totalLeads).toBe(18) // 12 + 6, both from real counts
+    expect(res.headers['cache-control']).toBe('no-store') // private admin data is never cached
+    expect(prisma.lead.count).not.toHaveBeenCalled() // totals are summed from the status groupings (one fewer query each)
+    expect(prisma.qualifiedLead.count).not.toHaveBeenCalled()
+    expect(res.body.data.totalLeads).toBe(18) // 12 + 6: the sums of the real per-status counts
     expect(res.body.data.leadFinder).toMatchObject({
       total: 12,
       newCount: 3,
@@ -132,11 +134,9 @@ describe('GET /api/admin/overview', () => {
     const app = createApp()
     const agent = await loggedInAgent(app)
 
-    vi.mocked(prisma.lead.count).mockRejectedValue(
+    vi.mocked(prisma.lead.groupBy).mockRejectedValue(
       new Error('Authentication failed against database server, the provided database credentials for `velnora_app` are not valid.'),
     )
-    vi.mocked(prisma.lead.groupBy).mockResolvedValue([] as never)
-    vi.mocked(prisma.qualifiedLead.count).mockResolvedValue(0)
     vi.mocked(prisma.qualifiedLead.groupBy).mockResolvedValue([] as never)
     vi.mocked(prisma.lead.findMany).mockResolvedValue([] as never)
     vi.mocked(prisma.qualifiedLead.findMany).mockResolvedValue([] as never)

@@ -125,7 +125,7 @@ export function LeadFinderLeadDetail() {
         {isLoading ? (
           <TableSkeleton rows={5} columns={3} />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => void load()} />
         ) : lead ? (
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">

@@ -22,6 +22,8 @@ export function ClientLeads() {
   const [result, setResult] = useState<PagedResult<ClientLead> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Bumped by the Retry button to run the load again.
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => setPage(1), [debouncedSearch, status, intent, sort])
 
@@ -49,7 +51,7 @@ export function ClientLeads() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, status, intent, sort, page])
+  }, [debouncedSearch, status, intent, sort, page, reloadKey])
 
   return (
     <div>
@@ -90,7 +92,7 @@ export function ClientLeads() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : !result || result.leads.length === 0 ? (
           <EmptyState message="No client leads match these filters." />
         ) : (

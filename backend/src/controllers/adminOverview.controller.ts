@@ -5,5 +5,6 @@ import type { ApiResponse } from '../types/api.js'
 export async function getAdminOverview(_req: Request, res: Response) {
   const overview = await getOverview()
   const response: ApiResponse = { success: true, message: 'OK', data: overview }
+  res.setHeader('Cache-Control', 'no-store')
   res.status(200).json(response)
 }

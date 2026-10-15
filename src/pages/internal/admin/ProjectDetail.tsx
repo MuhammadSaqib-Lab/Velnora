@@ -94,7 +94,7 @@ export function ProjectDetail() {
       <div>
         {back}
         <div className="mt-5">
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => void load()} />
         </div>
       </div>
     )

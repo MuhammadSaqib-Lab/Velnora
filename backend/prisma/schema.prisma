@@ -254,6 +254,8 @@ model Lead {
   @@index([status])
   @@index([opportunityScore])
   @@index([priority])
+  // The dashboard's "recent discoveries / recent leads" lists sort by newest first.
+  @@index([createdAt])
   @@map("leads")
 }
 

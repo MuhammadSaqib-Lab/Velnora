@@ -31,6 +31,8 @@ export function Projects() {
   const [result, setResult] = useState<ProjectList | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Bumped by the Retry button to run the load again.
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => setPage(1), [debouncedSearch, status, sort])
 
@@ -56,7 +58,7 @@ export function Projects() {
     return () => {
       cancelled = true
     }
-  }, [debouncedSearch, status, sort, page])
+  }, [debouncedSearch, status, sort, page, reloadKey])
 
   return (
     <div>
@@ -92,7 +94,7 @@ export function Projects() {
         {isLoading ? (
           <TableSkeleton columns={5} />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : !result || result.projects.length === 0 ? (
           <EmptyState message="No projects match these filters." />
         ) : (

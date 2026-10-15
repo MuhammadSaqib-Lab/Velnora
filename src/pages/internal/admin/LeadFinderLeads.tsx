@@ -301,7 +301,7 @@ export function LeadFinderLeads() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : !result || result.leads.length === 0 ? (
           <EmptyState message="No leads match these filters." />
         ) : (

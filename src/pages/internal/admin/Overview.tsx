@@ -11,11 +11,18 @@ export function Overview() {
   const [data, setData] = useState<AdminOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Bumped by the Retry button to run the load again.
+  const [attempt, setAttempt] = useState(0)
+
+  // Event-driven (not in the effect): clear the error, show the skeleton again, and re-run the load.
+  function retry() {
+    setError(null)
+    setIsLoading(true)
+    setAttempt((n) => n + 1)
+  }
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    setError(null)
     apiGet<AdminOverview>('/admin/overview')
       .then((result) => {
         if (cancelled) return
@@ -30,21 +37,20 @@ export function Overview() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [attempt])
 
   return (
     <div>
       <h1 className="text-xl font-semibold">Overview</h1>
       <p className="mt-1 text-sm text-[var(--color-ink-muted)]">
-        Real-time counts across the Client Handling Agent and the Lead Finder Agent.
+        Counts across the Client Handling Agent and the Lead Finder Agent, as of when this page loaded.
       </p>
 
       <div className="mt-6">
         {isLoading ? (
           <CardSkeleton count={8} />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={retry} />
         ) : data ? (
           <div className="space-y-8">
             <div>

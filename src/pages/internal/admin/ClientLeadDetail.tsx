@@ -30,11 +30,14 @@ export function ClientLeadDetail() {
   const [conversationError, setConversationError] = useState<string | null>(null)
   const [isLoadingConversation, setIsLoadingConversation] = useState(false)
   const [showConversation, setShowConversation] = useState(false)
+  // Bumped by the Retry button to run the load again.
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!id) return
     let cancelled = false
     setIsLoading(true)
+    setError(null)
     apiGet<ClientLead>(`/admin/client-leads/${id}`)
       .then((res) => {
         if (cancelled) return
@@ -47,7 +50,7 @@ export function ClientLeadDetail() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id, reloadKey])
 
   async function handleStatusChange(status: string) {
     if (!id) return
@@ -101,7 +104,7 @@ export function ClientLeadDetail() {
         {isLoading ? (
           <TableSkeleton rows={4} columns={3} />
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : lead ? (
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">

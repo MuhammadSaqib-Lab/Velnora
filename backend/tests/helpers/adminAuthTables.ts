@@ -55,9 +55,31 @@ export function createAdminAuthTables() {
       return row
     }),
     findUnique: vi.fn(
-      async ({ where, include }: { where: { tokenHash: string }; include?: { adminUser?: boolean } }) => {
+      async ({
+        where,
+        include,
+        select,
+      }: {
+        where: { tokenHash: string }
+        include?: { adminUser?: boolean }
+        select?: Record<string, unknown>
+      }) => {
         const row = sessions.get(where.tokenHash)
         if (!row) return null
+        if (select) {
+          // Like Prisma: only the requested columns, and a nested `select` on the relation
+          // returns only those user columns (never the password hash unless asked for).
+          const out: Record<string, unknown> = {}
+          for (const [key, wanted] of Object.entries(select)) {
+            if (!wanted) continue
+            if (key === 'adminUser') {
+              const user = users.get(row.adminUserId as string)
+              const nested = (wanted as { select?: Record<string, boolean> }).select
+              out.adminUser = !user ? null : nested ? Object.fromEntries(Object.keys(nested).filter((k) => nested[k]).map((k) => [k, user[k]])) : user
+            } else out[key] = row[key]
+          }
+          return out
+        }
         if (include?.adminUser) return { ...row, adminUser: users.get(row.adminUserId as string) ?? null }
         return row
       },

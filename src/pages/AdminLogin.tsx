@@ -6,7 +6,7 @@ import { BrandMark } from '@/components/layout/BrandMark'
 import { Button } from '@/components/ui/Button'
 import { fieldInputClass } from '@/components/ui/fieldStyles'
 import { apiPost, ApiNetworkError } from '@/lib/api'
-import { useAdminSession } from '@/lib/useAdminSession'
+import { setAdminSessionHint, useAdminSession } from '@/lib/useAdminSession'
 
 /**
  * The Admin Dashboard's real entry point (replaces the old shared
@@ -61,6 +61,8 @@ export function AdminLogin() {
     try {
       const res = await apiPost<{ admin: { id: string; email: string } }>('/auth/admin/login', { email, password })
       if (res.success) {
+        // The cookie is set: let the dashboard frame appear without waiting for another round trip.
+        setAdminSessionHint(true)
         session.refresh()
         const redirectTo = (location.state as { from?: string } | null)?.from ?? '/internal/admin'
         navigate(redirectTo, { replace: true })
@@ -89,6 +91,12 @@ export function AdminLogin() {
             onSubmit={(e) => void handleSubmit(e)}
             className="mt-8 space-y-4 rounded-[var(--radius-panel)] border border-white/[0.08] bg-white/[0.03] p-6 backdrop-blur-xl"
           >
+            {session.status === 'error' && !error ? (
+              <p role="status" className="rounded-[var(--radius-field)] border border-white/[0.12] px-3 py-2.5 text-xs text-[var(--color-ink-muted)]">
+                Couldn’t check for an existing session: {session.message} You can still sign in.
+              </p>
+            ) : null}
+
             {error ? (
               <div
                 role="alert"
